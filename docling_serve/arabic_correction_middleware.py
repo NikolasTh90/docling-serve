@@ -114,12 +114,24 @@ class ArabicCorrectionMiddleware:
         try:
             self.logger.debug(f"Sending request to Ollama model: {self.model_name}")
             
+            # Set generation parameters for maximum determinism
+            # These settings ensure the model makes minimal, predictable edits
             response = self.ollama_client.chat(
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": text}
-                ]
+                ],
+                options={
+                    "num_predict": 16384,     # Ensure enough tokens for full-length response
+                    "temperature": 0.0,      # Zero temperature for maximum determinism
+                    "top_k": 1,              # Take only the most probable token at each step
+                    "top_p": 1.0,            # Use full probability distribution with top_k=1
+                    "seed": 42,              # Fixed seed for reproducible results
+                    "stop": [],              # No special stop tokens
+                    "num_ctx": 16384,         # Maximum context window
+                    "stream": False          # Don't stream the response
+                }
             )
             
             corrected_text = response['message']['content'].strip()
@@ -127,13 +139,24 @@ class ArabicCorrectionMiddleware:
             was_modified = text != corrected_text
             
             self.logger.info(f"Arabic correction completed - Original: {text_length} chars, "
-                           f"Corrected: {corrected_length} chars, Modified: {was_modified}")
+                        f"Corrected: {corrected_length} chars, Modified: {was_modified}")
             
             if was_modified:
                 self.logger.debug(f"Text was modified during correction")
                 # Calculate rough change percentage
                 change_ratio = abs(corrected_length - text_length) / text_length * 100
                 self.logger.info(f"Text length change: {change_ratio:.1f}%")
+                
+                # Log some stats about the correction
+                if corrected_length < text_length * 0.9 or corrected_length > text_length * 1.1:
+                    self.logger.warning(f"Significant length change detected ({change_ratio:.1f}%) - "
+                                    f"Original: {text_length}, Corrected: {corrected_length}")
+                    
+                    # For dramatic changes, log detailed character count info for debugging
+                    if abs(change_ratio) > 20:
+                        orig_chars = len([c for c in text if c.strip()])
+                        corr_chars = len([c for c in corrected_text if c.strip()])
+                        self.logger.warning(f"Non-whitespace character count - Original: {orig_chars}, Corrected: {corr_chars}")
             else:
                 self.logger.debug("Text was not modified during correction")
             
