@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from pathlib import Path
 from langdetect import detect
 from ollama import Client as OllamaClient
@@ -159,47 +159,158 @@ class ArabicCorrectionMiddleware:
             
             return text
 
-    def process_conversion_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def process_conversion_result(self, result):
         """Process and enhance conversion result with Arabic correction."""
         if not self.enabled:
             self.logger.debug("Arabic correction disabled, returning original result")
             return result
         
         self.logger.info("Starting Arabic correction processing of conversion result")
+        self.logger.debug(f"Result type: {type(result)}, attributes: {dir(result) if hasattr(result, '__dict__') else 'N/A'}")
         
-        enhanced_result = result.copy()
         documents_processed = 0
         corrections_applied = 0
         
-        # Process document(s) in the result
-        if "document" in result:
-            self.logger.debug("Processing single document")
-            enhanced_result["document"], doc_corrections = self._process_document(result["document"])
-            documents_processed = 1
-            corrections_applied = doc_corrections
+        try:
+            # Handle response object with document attribute
+            if hasattr(result, 'document') and result.document is not None:
+                self.logger.debug("Processing single document from result.document attribute")
+                corrected_document, doc_corrections = self._process_document_response(result.document)
+                
+                # Update the document in place
+                result.document = corrected_document
+                documents_processed = 1
+                corrections_applied = doc_corrections
+                
+            # Handle response object with documents attribute (list)
+            elif hasattr(result, 'documents') and result.documents is not None:
+                doc_count = len(result.documents)
+                self.logger.debug(f"Processing {doc_count} documents from result.documents attribute")
+                
+                corrected_documents = []
+                for i, doc in enumerate(result.documents):
+                    self.logger.debug(f"Processing document {i+1}/{doc_count}")
+                    corrected_doc, doc_corrections = self._process_document_response(doc)
+                    corrected_documents.append(corrected_doc)
+                    corrections_applied += doc_corrections
+                    documents_processed += 1
+                
+                result.documents = corrected_documents
+                
+            # Handle dictionary-style result
+            elif isinstance(result, dict):
+                self.logger.debug("Processing dictionary-style result")
+                
+                if "document" in result:
+                    self.logger.debug("Processing single document from dictionary")
+                    result["document"], doc_corrections = self._process_document_dict(result["document"])
+                    documents_processed = 1
+                    corrections_applied = doc_corrections
+                    
+                elif "documents" in result and isinstance(result["documents"], list):
+                    doc_count = len(result["documents"])
+                    self.logger.debug(f"Processing {doc_count} documents from dictionary")
+                    
+                    processed_docs = []
+                    for i, doc in enumerate(result["documents"]):
+                        self.logger.debug(f"Processing document {i+1}/{doc_count}")
+                        processed_doc, doc_corrections = self._process_document_dict(doc)
+                        processed_docs.append(processed_doc)
+                        corrections_applied += doc_corrections
+                        documents_processed += 1
+                    
+                    result["documents"] = processed_docs
             
-        elif "documents" in result and isinstance(result["documents"], list):
-            doc_count = len(result["documents"])
-            self.logger.debug(f"Processing {doc_count} documents")
-            
-            processed_docs = []
-            for i, doc in enumerate(result["documents"]):
-                self.logger.debug(f"Processing document {i+1}/{doc_count}")
-                processed_doc, doc_corrections = self._process_document(doc)
-                processed_docs.append(processed_doc)
-                corrections_applied += doc_corrections
-                documents_processed += 1
-            
-            enhanced_result["documents"] = processed_docs
+            else:
+                self.logger.warning(f"Unsupported result structure: {type(result)}")
+        
+        except Exception as e:
+            self.logger.error(f"Error processing conversion result: {e}", exc_info=True)
         
         self.logger.info(f"Arabic correction processing completed - Documents: {documents_processed}, "
                         f"Corrections applied: {corrections_applied}")
         
-        return enhanced_result
+        return result
 
-    def _process_document(self, document: Dict[str, Any]) -> tuple[Dict[str, Any], int]:
-        """Process individual document for Arabic correction."""
-        self.logger.debug("Processing individual document for Arabic correction")
+    def _process_document_response(self, document_response) -> Tuple[Any, int]:
+        """Process DocumentResponse object for Arabic correction."""
+        self.logger.debug(f"Processing DocumentResponse object: {type(document_response)}")
+        
+        corrections_count = 0
+        
+        try:
+            # Correct text_content if it's Arabic
+            if hasattr(document_response, 'text_content') and document_response.text_content:
+                text_content = document_response.text_content
+                self.logger.debug(f"Checking text_content for Arabic correction - Length: {len(text_content)}")
+                
+                if self.should_correct_text(text_content):
+                    self.logger.info("Applying Arabic OCR correction to text_content")
+                    original_content = text_content
+                    corrected_content = self.correct_arabic_text(text_content)
+                    
+                    # Update the attribute directly
+                    document_response.text_content = corrected_content
+                    
+                    if original_content != corrected_content:
+                        corrections_count += 1
+                        self.logger.info("text_content was successfully corrected")
+                    else:
+                        self.logger.debug("text_content was not modified after correction")
+                else:
+                    self.logger.debug("text_content does not require Arabic correction")
+            
+            # Correct md_content if it's Arabic
+            if hasattr(document_response, 'md_content') and document_response.md_content:
+                md_content = document_response.md_content
+                self.logger.debug(f"Checking md_content for Arabic correction - Length: {len(md_content)}")
+                
+                if self.should_correct_text(md_content):
+                    self.logger.info("Applying Arabic OCR correction to md_content")
+                    original_content = md_content
+                    corrected_content = self.correct_arabic_text(md_content)
+                    
+                    # Update the attribute directly
+                    document_response.md_content = corrected_content
+                    
+                    if original_content != corrected_content:
+                        corrections_count += 1
+                        self.logger.info("md_content was successfully corrected")
+                    else:
+                        self.logger.debug("md_content was not modified after correction")
+                else:
+                    self.logger.debug("md_content does not require Arabic correction")
+            
+            # Also check for html_content if available
+            if hasattr(document_response, 'html_content') and document_response.html_content:
+                html_content = document_response.html_content
+                self.logger.debug(f"Checking html_content for Arabic correction - Length: {len(html_content)}")
+                
+                if self.should_correct_text(html_content):
+                    self.logger.info("Applying Arabic OCR correction to html_content")
+                    original_content = html_content
+                    corrected_content = self.correct_arabic_text(html_content)
+                    
+                    # Update the attribute directly
+                    document_response.html_content = corrected_content
+                    
+                    if original_content != corrected_content:
+                        corrections_count += 1
+                        self.logger.info("html_content was successfully corrected")
+                    else:
+                        self.logger.debug("html_content was not modified after correction")
+                else:
+                    self.logger.debug("html_content does not require Arabic correction")
+                    
+        except Exception as e:
+            self.logger.error(f"Error processing DocumentResponse: {e}", exc_info=True)
+        
+        self.logger.debug(f"DocumentResponse processing completed - Corrections applied: {corrections_count}")
+        return document_response, corrections_count
+
+    def _process_document_dict(self, document: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
+        """Process individual document dictionary for Arabic correction."""
+        self.logger.debug("Processing individual document dictionary for Arabic correction")
         
         corrected_doc = document.copy()
         corrections_count = 0
@@ -242,5 +353,24 @@ class ArabicCorrectionMiddleware:
             else:
                 self.logger.debug("md_content does not require Arabic correction")
         
-        self.logger.debug(f"Document processing completed - Corrections applied: {corrections_count}")
+        # Correct html_content if it's Arabic
+        if "html_content" in document and document["html_content"]:
+            html_content = document["html_content"]
+            self.logger.debug(f"Checking html_content for Arabic correction - Length: {len(html_content)}")
+            
+            if self.should_correct_text(html_content):
+                self.logger.info("Applying Arabic OCR correction to html_content")
+                original_content = html_content
+                corrected_content = self.correct_arabic_text(html_content)
+                corrected_doc["html_content"] = corrected_content
+                
+                if original_content != corrected_content:
+                    corrections_count += 1
+                    self.logger.info("html_content was successfully corrected")
+                else:
+                    self.logger.debug("html_content was not modified after correction")
+            else:
+                self.logger.debug("html_content does not require Arabic correction")
+        
+        self.logger.debug(f"Document dictionary processing completed - Corrections applied: {corrections_count}")
         return corrected_doc, corrections_count
