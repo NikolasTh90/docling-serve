@@ -17,6 +17,17 @@ from docling_serve.storage import get_scratch
 if TYPE_CHECKING:
     from docling_serve.engines.async_local.orchestrator import AsyncLocalOrchestrator
 
+from docling_serve.arabic_correction_middleware import ArabicCorrectionMiddleware
+from docling_serve.arabic_settings import ArabicCorrectionSettings
+
+# Initialize Arabic correction settings and middleware
+arabic_settings = ArabicCorrectionSettings()
+arabic_middleware = ArabicCorrectionMiddleware(
+    enabled=arabic_settings.enabled,
+    ollama_host=arabic_settings.ollama_host,
+    model_name=arabic_settings.model_name
+)
+
 _log = logging.getLogger(__name__)
 
 
@@ -74,6 +85,18 @@ class AsyncLocalWorker:
                         conv_results=results,
                         work_dir=work_dir,
                     )
+
+                    _log.info(f"Task {task_id} completed with response: {response}")
+
+                    # Apply Arabic correction if enabled and requested
+                    enable_arabic_correction = getattr(task.options, 'enable_arabic_correction', False)
+                    if enable_arabic_correction and arabic_middleware.enabled:
+                        try:
+                            _log.info(f"Applying Arabic OCR correction during async processing for task {task_id}")
+                            response = arabic_middleware.process_conversion_result(response)
+                        except Exception as e:
+                            _log.error(f"Arabic correction failed for task {task_id}: {e}", exc_info=True)
+                            # Continue without correction rather than failing the entire task
 
                     if work_dir.exists():
                         task.scratch_dir = work_dir

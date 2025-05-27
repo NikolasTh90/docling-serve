@@ -625,16 +625,8 @@ def create_app():  # noqa: C901
                 status_code=404,
                 detail="Task result not found. Please wait for a completion status.",
             )
-        # Get the original task to check if Arabic correction was requested
-        try:
-            task = await orchestrator.task_status(task_id=task_id)
-            if hasattr(task, 'options') and task.options:
-                enable_arabic_correction = getattr(task.options, 'enable_arabic_correction', False)
-                if enable_arabic_correction and arabic_middleware.enabled:
-                    _log.info("Applying Arabic OCR correction to async task result")
-                    result = arabic_middleware.process_conversion_result(result)
-        except Exception as e:
-            _log.warning(f"Could not apply Arabic correction to async result: {e}")
+        
+
 
         return result
 
