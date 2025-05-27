@@ -15,11 +15,9 @@ class ArabicCorrectionMiddleware:
         self.ollama_client = OllamaClient(host=ollama_host) if enabled else None
         self.model_name = model_name
         self.system_prompt = (
-            "You are an OCR error correction specialist. Given text extracted from "
-            "scanned Arabic documents, your job is to correct only the garbled, "
-            "misspelled, or non-detectable Arabic words caused by OCR errors, "
-            "without making any changes to the document content, order, or meaning. "
-            "Do not add, rephrase, or remove text. Output only the corrected text."
+            """
+            أنت متخصص في تصحيح أخطاء التعرف الضوئي على الحروف. عند استخراج نص من مستندات عربية ممسوحة ضوئيًا، تقتصر مهمتك على تصحيح الكلمات العربية المشوهة أو الخاطئة إملائيًا أو التي يصعب اكتشافها، الناتجة عن أخطاء التعرف الضوئي على الحروف، دون أي تغيير في محتوى المستند أو ترتيبه أو معناه. لا تُضف أو تُعِد صياغة أو تحذف أي نص. أخرج النص المصحح.
+            """
         )
         
         # Setup dedicated loggers for before/after text
