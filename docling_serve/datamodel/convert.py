@@ -370,6 +370,11 @@ class ConvertDocumentsOptions(BaseModel):
         ),
     ] = None
 
+    enable_arabic_correction: bool = Field(
+        default=False,
+        description="Enable Arabic OCR error correction using LLM"
+    )
+
     @model_validator(mode="after")
     def picture_description_exclusivity(self) -> Self:
         # Validate picture description options

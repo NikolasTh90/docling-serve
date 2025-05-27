@@ -58,6 +58,9 @@ from docling_serve.helper_functions import FormDepends
 from docling_serve.settings import docling_serve_settings
 from docling_serve.storage import get_scratch
 
+from docling_serve.settings import docling_serve_settings, arabic_correction_settings
+from docling_serve.arabic_correction_middleware import ArabicCorrectionMiddleware
+
 
 # Set up custom logging as we'll be intermixes with FastAPI/Uvicorn's logging
 class ColoredLogFormatter(logging.Formatter):
@@ -129,6 +132,22 @@ def create_app():  # noqa: C901
         _log.warning("Unable to get docling_serve version, falling back to 0.0.0")
 
         version = "0.0.0"
+
+    # Initialize Arabic correction middleware
+    try:
+        if arabic_correction_settings:
+            arabic_middleware = ArabicCorrectionMiddleware(
+                enabled=arabic_correction_settings.enabled,
+                ollama_host=arabic_correction_settings.ollama_host,
+                model_name=arabic_correction_settings.model_name
+            )
+            _log.info(f"Arabic correction middleware initialized: enabled={arabic_correction_settings.enabled}")
+        else:
+            arabic_middleware = ArabicCorrectionMiddleware(enabled=False)
+            _log.info("Arabic correction middleware disabled: settings not available")
+    except Exception as e:
+        _log.warning(f"Failed to initialize Arabic correction middleware: {e}")
+        arabic_middleware = ArabicCorrectionMiddleware(enabled=False)
 
     offline_docs_assets = False
     if (
@@ -323,6 +342,14 @@ def create_app():  # noqa: C901
                 status_code=404,
                 detail="Task result not found. Please wait for a completion status.",
             )
+        
+        # Apply Arabic correction if enabled and requested
+        if hasattr(conversion_request, 'options') and conversion_request.options:
+            enable_arabic_correction = getattr(conversion_request.options, 'enable_arabic_correction', False)
+            if enable_arabic_correction and arabic_middleware.enabled:
+                _log.info("Applying Arabic OCR correction to sync source conversion result")
+                result = arabic_middleware.process_conversion_result(result)
+
         return result
 
     # Convert a document from file(s)
@@ -365,6 +392,13 @@ def create_app():  # noqa: C901
                 status_code=404,
                 detail="Task result not found. Please wait for a completion status.",
             )
+        
+        # Apply Arabic correction if enabled and requested
+        enable_arabic_correction = getattr(options, 'enable_arabic_correction', False)
+        if enable_arabic_correction and arabic_middleware.enabled:
+            _log.info("Applying Arabic OCR correction to sync file conversion result")
+            result = arabic_middleware.process_conversion_result(result)
+
         return result
 
     # Convert a document from URL(s) using the async api
@@ -414,6 +448,72 @@ def create_app():  # noqa: C901
             task_position=task_queue_position,
             task_meta=task.processing_meta,
         )
+
+
+    # ADD NEW ENDPOINT - Arabic correction status
+    @app.get("/v1alpha/arabic/status")
+    async def arabic_correction_status():
+        """Get Arabic correction service status."""
+        try:
+            from docling_serve.gradio_ui import validate_arabic_correction_environment, get_arabic_correction_config
+            
+            validation_result = validate_arabic_correction_environment()
+            config = get_arabic_correction_config()
+            
+            return {
+                "enabled": config["enabled"],
+                "host": config["host"],
+                "model": config["model"],
+                "status": validation_result["status"],
+                "issues": validation_result.get("issues", []),
+                "warnings": validation_result.get("warnings", [])
+            }
+        except Exception as e:
+            return {
+                "enabled": False,
+                "status": "error",
+                "issues": [f"Failed to check Arabic correction status: {str(e)}"]
+            }
+
+    # ADD NEW ENDPOINT - Test Arabic correction
+    @app.post("/v1alpha/arabic/test")
+    async def test_arabic_correction(test_text: str = "هذا نص تجريبي للاختبار"):
+        """Test Arabic correction functionality."""
+        if not arabic_middleware.enabled:
+            raise HTTPException(
+                status_code=503,
+                detail="Arabic correction is disabled"
+            )
+        
+        try:
+            # Test language detection
+            is_arabic = arabic_middleware.should_correct_text(test_text)
+            
+            if not is_arabic:
+                return {
+                    "success": False,
+                    "message": "Text not detected as Arabic",
+                    "original_text": test_text,
+                    "corrected_text": test_text
+                }
+            
+            # Test correction
+            corrected_text = arabic_middleware.correct_arabic_text(test_text)
+            
+            return {
+                "success": True,
+                "message": "Arabic correction test completed",
+                "original_text": test_text,
+                "corrected_text": corrected_text,
+                "was_modified": test_text != corrected_text
+            }
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Arabic correction test failed: {str(e)}"
+            )
+
 
     # Task status poll
     @app.get(
@@ -525,6 +625,17 @@ def create_app():  # noqa: C901
                 status_code=404,
                 detail="Task result not found. Please wait for a completion status.",
             )
+        # Get the original task to check if Arabic correction was requested
+        try:
+            task = await orchestrator.task_status(task_id=task_id)
+            if hasattr(task, 'options') and task.options:
+                enable_arabic_correction = getattr(task.options, 'enable_arabic_correction', False)
+                if enable_arabic_correction and arabic_middleware.enabled:
+                    _log.info("Applying Arabic OCR correction to async task result")
+                    result = arabic_middleware.process_conversion_result(result)
+        except Exception as e:
+            _log.warning(f"Could not apply Arabic correction to async result: {e}")
+
         return result
 
     # Update task progress

@@ -2,6 +2,7 @@ import base64
 import importlib
 import json
 import logging
+import os
 import ssl
 import tempfile
 import time
@@ -21,6 +22,15 @@ from docling.datamodel.pipeline_options import (
 
 from docling_serve.helper_functions import _to_list_of_strings
 from docling_serve.settings import docling_serve_settings, uvicorn_settings
+
+
+# ADD THESE IMPORTS for Arabic correction settings
+try:
+    from docling_serve.arabic_settings import ArabicCorrectionSettings
+    arabic_settings = ArabicCorrectionSettings()
+except ImportError:
+    # Fallback if Arabic settings not available
+    arabic_settings = None
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +157,251 @@ def health_check():
     if response.status_code == 200:
         return "Healthy"
     return "Unhealthy"
+def check_arabic_correction_status():
+    """Check if Arabic correction service is available using environment variables."""
+    try:
+        # Get configuration from environment variables with fallbacks
+        if arabic_settings:
+            # Use the settings class if available
+            ollama_host = arabic_settings.ollama_host
+            model_name = arabic_settings.model_name
+            enabled = arabic_settings.enabled
+        else:
+            # Fallback to direct environment variable access
+            ollama_host = os.getenv("DOCLING_ARABIC_OLLAMA_HOST", "http://localhost:11434")
+            model_name = os.getenv("DOCLING_ARABIC_MODEL_NAME", "command-r7b-arabic")
+            enabled = os.getenv("DOCLING_ARABIC_ENABLED", "true").lower() == "true"
+        
+        # If Arabic correction is disabled via config, return disabled status
+        if not enabled:
+            return "<small style='color: gray;'>⚪ Arabic correction: Disabled</small>"
+        
+        # Try to connect to Ollama using configured host
+        import ollama
+        client = ollama.Client(host=ollama_host)
+        
+        # Check if Ollama service is reachable
+        models = client.list()
+        model_names = [model['name'] for model in models.get('models', [])]
+        
+        # Check if the configured Arabic model is available
+        if model_name in model_names:
+            return f"<small style='color: green;'>✓ Arabic correction: Available ({model_name})</small>"
+        else:
+            return f"<small style='color: orange;'>⚠ Arabic correction: Model '{model_name}' not found</small>"
+            
+    except ImportError:
+        return "<small style='color: red;'>✗ Arabic correction: Ollama package not installed</small>"
+    except Exception as e:
+        # Log the specific error for debugging
+        logger.debug(f"Arabic correction status check failed: {e}")
+        ollama_host = os.getenv("DOCLING_ARABIC_OLLAMA_HOST", "http://localhost:11434")
+        return f"<small style='color: red;'>✗ Arabic correction: Cannot connect to {ollama_host}</small>"
+
+def get_arabic_correction_config():
+    """Get Arabic correction configuration for display."""
+    if arabic_settings:
+        return {
+            "enabled": arabic_settings.enabled,
+            "host": arabic_settings.ollama_host,
+            "model": arabic_settings.model_name,
+        }
+    else:
+        return {
+            "enabled": os.getenv("DOCLING_ARABIC_ENABLED", "true").lower() == "true",
+            "host": os.getenv("DOCLING_ARABIC_OLLAMA_HOST", "http://localhost:11434"),
+            "model": os.getenv("DOCLING_ARABIC_MODEL_NAME", "command-r7b-arabic"),
+        }
+    
+def validate_arabic_correction_environment():
+    """Validate Arabic correction environment configuration."""
+    logger.debug("→ Enter validate_arabic_correction_environment")
+    issues = []
+    warnings = []
+    config = get_arabic_correction_config()
+    logger.debug("Config loaded: %s", config)
+
+    # If disabled, skip all checks
+    if not config["enabled"]:
+        logger.debug("Arabic correction is disabled via configuration")
+        return {
+            "issues": [],
+            "warnings": ["Arabic correction is disabled via configuration"],
+            "status": "disabled",
+        }
+
+    # Check that required packages are installed
+    try:
+        import ollama
+        import langdetect
+        logger.debug("Required packages (ollama, langdetect) imported successfully")
+    except ImportError as e:
+        missing = str(e).split("'")[1] if "'" in str(e) else "unknown package"
+        issues.append(f"Missing required package: {missing}")
+        logger.debug("ImportError: %s", e)
+        return {"issues": issues, "warnings": warnings, "status": "error"}
+
+    # Check Ollama connectivity and model availability
+    try:
+        import requests
+        health_url = f"{config['host']}/api/tags"
+        logger.debug("Pinging Ollama health endpoint: %s", health_url)
+        resp = requests.get(health_url, timeout=10)
+        logger.debug("Health check response code: %s", resp.status_code)
+
+        if resp.status_code != 200:
+            issues.append(f"Ollama service at {config['host']} returned {resp.status_code}")
+            logger.debug("Non-200 health check, aborting model list check")
+        else:
+            try:
+                client = ollama.Client(host=config["host"])
+                raw = client.list()
+                logger.debug("Raw client.list() output: %r", raw)
+
+                # normalize into a list of model-entry objects
+                if isinstance(raw, dict) and "models" in raw:
+                    entries = raw["models"]
+                elif hasattr(raw, "models"):
+                    entries = raw.models
+                elif isinstance(raw, tuple) and len(raw) == 2 and raw[0] == "models":
+                    entries = raw[1]
+                else:
+                    entries = raw
+                logger.debug("Normalized entries: %r", entries)
+
+                available_models = []
+                for e in entries:
+                    # first look for `.model`, then `.name`, else fall back to str()
+                    name = getattr(e, "model", None) or getattr(e, "name", None) or str(e)
+                    available_models.append(name)
+                logger.debug("Available models list: %r", available_models)
+
+                present = config["model"] in available_models
+                logger.debug("Is configured model '%s' present? %s", config["model"], present)
+                if not present:
+                    issues.append(f"Required model '{config['model']}' not found in Ollama")
+                    for m in available_models:
+                        logger.info("Ollama available model: %s", m)
+                else:
+                    # quick smoke-test of the model
+                    try:
+                        test = client.chat(
+                            model=config["model"],
+                            messages=[{"role": "user", "content": "test"}],
+                            options={"max_tokens": 1},
+                        )
+                        logger.debug("Model smoke-test result: %r", test)
+                        if not test:
+                            warnings.append(f"Model '{config['model']}' loaded but did not respond")
+                    except Exception as e:
+                        warnings.append(f"Model '{config['model']}' test failed: {str(e)[:100]}")
+                        logger.debug("Exception during smoke-test: %s", e)
+            except Exception as e:
+                issues.append(f"Failed to check models in Ollama: {str(e)[:100]}")
+                logger.debug("Exception listing models: %s", e)
+
+    except requests.exceptions.Timeout:
+        issues.append(f"Timeout connecting to Ollama at {config['host']} (>10s)")
+        logger.debug("Requests Timeout connecting to %s", config['host'])
+    except requests.exceptions.ConnectionError:
+        issues.append(f"Cannot connect to Ollama at {config['host']} - is Ollama running?")
+        logger.debug("ConnectionError connecting to %s", config['host'])
+    except Exception as e:
+        issues.append(f"Error checking Ollama connectivity: {str(e)[:100]}")
+        logger.debug("Unexpected exception during Ollama connectivity: %s", e)
+
+    # Check that langdetect can detect Arabic
+    try:
+        from langdetect import detect
+        detected = detect("هذا نص تجريبي")
+        logger.debug("langdetect.detect returned: %s", detected)
+        if detected != "ar":
+            warnings.append(f"Language detection test failed (detected: {detected})")
+    except Exception as e:
+        warnings.append(f"Language detection test failed: {str(e)[:50]}")
+        logger.debug("Exception during language detect test: %s", e)
+
+    # Derive overall status
+    status = "error" if issues else "warning" if warnings else "healthy"
+    logger.debug("Final status: %s; issues: %s; warnings: %s", status, issues, warnings)
+
+    return {"issues": issues, "warnings": warnings, "status": status}
+
+def get_arabic_correction_status_with_validation():
+    """Get Arabic correction status with detailed validation."""
+    validation_result = validate_arabic_correction_environment()
+    config = get_arabic_correction_config()
+    
+    if validation_result["status"] == "disabled":
+        return "<small style='color: gray;'>⚪ Arabic correction: Disabled in configuration</small>"
+    
+    elif validation_result["status"] == "error":
+        error_details = "; ".join(validation_result["issues"][:2])  # Show first 2 issues
+        return f"<small style='color: red;'>✗ Arabic correction: {error_details}</small>"
+    
+    elif validation_result["status"] == "warning":
+        warning_details = "; ".join(validation_result["warnings"][:1])  # Show first warning
+        return f"<small style='color: orange;'>⚠ Arabic correction: {warning_details}</small>"
+    
+    else:
+        return f"<small style='color: green;'>✓ Arabic correction: Ready ({config['model']})</small>"
+
+def get_detailed_arabic_correction_info():
+    """Get detailed Arabic correction information for the UI."""
+    validation_result = validate_arabic_correction_environment()
+    config = get_arabic_correction_config()
+    
+    info_html = f"""
+    <div style='font-size: 12px; margin-top: 10px;'>
+    <strong>Arabic OCR Correction Status:</strong><br>
+    <strong>Host:</strong> {config['host']}<br>
+    <strong>Model:</strong> {config['model']}<br>
+    <strong>Enabled:</strong> {config['enabled']}<br>
+    """
+    
+    if validation_result["issues"]:
+        info_html += "<br><strong style='color: red;'>Issues:</strong><br>"
+        for issue in validation_result["issues"]:
+            info_html += f"• {issue}<br>"
+    
+    if validation_result["warnings"]:
+        info_html += "<br><strong style='color: orange;'>Warnings:</strong><br>"
+        for warning in validation_result["warnings"]:
+            info_html += f"• {warning}<br>"
+    
+    if validation_result["status"] == "healthy":
+        info_html += "<br><strong style='color: green;'>✓ All checks passed</strong><br>"
+    
+    # Add configuration help
+    info_html += """
+    <br><strong>Configuration:</strong><br>
+    Set these environment variables:<br>
+    • <code>DOCLING_ARABIC_ENABLED=true</code><br>
+    • <code>DOCLING_ARABIC_OLLAMA_HOST=http://localhost:11434</code><br>
+    • <code>DOCLING_ARABIC_MODEL_NAME=command-r7b-arabic</code><br>
+    </div>
+    """
+    
+    return info_html
+
+def test_arabic_correction_connection():
+    """Test Arabic correction connection and return user-friendly message."""
+    try:
+        validation_result = validate_arabic_correction_environment()
+        
+        if validation_result["status"] == "healthy":
+            return "✅ Arabic correction is working properly!"
+        elif validation_result["status"] == "disabled":
+            return "ℹ️ Arabic correction is disabled in configuration"
+        elif validation_result["status"] == "warning":
+            warnings = "; ".join(validation_result["warnings"])
+            return f"⚠️ Arabic correction has warnings: {warnings}"
+        else:
+            issues = "; ".join(validation_result["issues"])
+            return f"❌ Arabic correction has issues: {issues}"
+            
+    except Exception as e:
+        return f"❌ Error testing Arabic correction: {str(e)}"
 
 
 def set_options_visibility(x):
@@ -293,7 +548,12 @@ def process_url(
     do_formula_enrichment,
     do_picture_classification,
     do_picture_description,
+    enable_arabic_correction=True,
 ):
+    
+    # Check if Arabic correction is globally enabled via config
+    config = get_arabic_correction_config()
+    final_arabic_correction = enable_arabic_correction and config["enabled"]
     parameters = {
         "http_sources": [{"url": source} for source in input_sources.split(",")],
         "options": {
@@ -312,6 +572,7 @@ def process_url(
             "do_formula_enrichment": do_formula_enrichment,
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
+            "enable_arabic_correction": final_arabic_correction,
         },
     }
     if (
@@ -365,6 +626,7 @@ def process_file(
     do_formula_enrichment,
     do_picture_classification,
     do_picture_description,
+    enable_arabic_correction=True,
 ):
     if not files or len(files) == 0:
         logger.error("No files provided.")
@@ -372,6 +634,10 @@ def process_file(
     files_data = [
         {"base64_string": file_to_base64(file), "filename": file.name} for file in files
     ]
+
+    # Check if Arabic correction is globally enabled via config
+    config = get_arabic_correction_config()
+    final_arabic_correction = enable_arabic_correction and config["enabled"]
 
     parameters = {
         "file_sources": files_data,
@@ -391,6 +657,7 @@ def process_file(
             "do_formula_enrichment": do_formula_enrichment,
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
+            "enable_arabic_correction": final_arabic_correction,
         },
     }
 
@@ -461,6 +728,32 @@ def response_to_output(response, return_as_file):
         doctags_content,
         download_button,
     )
+
+
+def log_arabic_correction_startup_status():
+    """Log Arabic correction status on startup for debugging."""
+    try:
+        validation_result = validate_arabic_correction_environment()
+        config = get_arabic_correction_config()
+        
+        logger.info(f"Arabic OCR Correction - Enabled: {config['enabled']}")
+        logger.info(f"Arabic OCR Correction - Host: {config['host']}")
+        logger.info(f"Arabic OCR Correction - Model: {config['model']}")
+        logger.info(f"Arabic OCR Correction - Status: {validation_result['status']}")
+        
+        if validation_result['issues']:
+            for issue in validation_result['issues']:
+                logger.warning(f"Arabic OCR Correction Issue: {issue}")
+                
+        if validation_result['warnings']:
+            for warning in validation_result['warnings']:
+                logger.info(f"Arabic OCR Correction Warning: {warning}")
+                
+    except Exception as e:
+        logger.error(f"Error checking Arabic correction status on startup: {e}")
+
+# Call this at the end of the file, before the UI definition
+log_arabic_correction_startup_status()
 
 
 ############
@@ -649,6 +942,41 @@ with gr.Blocks(
                     label="Enable picture description", value=False
                 )
 
+        # Enhanced Arabic correction section with validation
+        with gr.Row():
+            with gr.Column():
+                enable_arabic_correction = gr.Checkbox(
+                    label="Enable Arabic OCR Correction",
+                    value=get_arabic_correction_config()["enabled"],
+                    info="Automatically detect and correct Arabic OCR errors using LLM"
+                )
+            with gr.Column():
+                # Dynamic status with validation
+                arabic_correction_status = gr.HTML(
+                    value=get_arabic_correction_status_with_validation(),
+                    visible=True
+                )
+        
+        # Detailed configuration and validation info
+        with gr.Accordion("Arabic Correction Configuration & Status", open=False):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    arabic_detailed_info = gr.HTML(
+                        value=get_detailed_arabic_correction_info(),
+                        visible=True
+                    )
+                with gr.Column(scale=1):
+                    test_arabic_btn = gr.Button(
+                        "Test Connection",
+                        variant="secondary",
+                        scale=1
+                    )
+                    test_arabic_result = gr.Textbox(
+                        label="Test Result",
+                        interactive=False,
+                        visible=False
+                    )
+
     # Task id output
     with gr.Row(visible=False) as task_id_output:
         task_id_rendered = gr.Textbox(label="Task id", interactive=False)
@@ -699,6 +1027,24 @@ with gr.Blocks(
         outputs=[return_as_file],
     )
 
+    # Arabic correction test button
+    test_arabic_btn.click(
+        fn=test_arabic_correction_connection,
+        inputs=[],
+        outputs=[test_arabic_result]
+    ).then(
+        fn=lambda x: gr.Textbox(visible=True),
+        inputs=[test_arabic_result],
+        outputs=[test_arabic_result]
+    )
+    
+    # Auto-refresh Arabic status every 30 seconds
+    arabic_correction_status.change(
+        fn=get_arabic_correction_status_with_validation,
+        inputs=[],
+        outputs=[arabic_correction_status],
+    )
+
     # URL processing
     url_process_btn.click(
         set_options_visibility, inputs=[false_bool], outputs=[options]
@@ -741,6 +1087,7 @@ with gr.Blocks(
             do_formula_enrichment,
             do_picture_classification,
             do_picture_description,
+            enable_arabic_correction,
         ],
         outputs=[
             task_id_rendered,
@@ -828,6 +1175,7 @@ with gr.Blocks(
             do_formula_enrichment,
             do_picture_classification,
             do_picture_description,
+            enable_arabic_correction,
         ],
         outputs=[
             task_id_rendered,

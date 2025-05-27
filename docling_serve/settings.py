@@ -7,13 +7,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
 from docling_serve.datamodel.engines import AsyncEngine
+from docling_serve.arabic_settings import ArabicCorrectionSettings
 
 
 class UvicornSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="UVICORN_", env_file=".env", extra="allow"
     )
-
+    log_level: str = "info"
     host: str = "0.0.0.0"
     port: int = 5001
     reload: bool = False
@@ -24,6 +25,7 @@ class UvicornSettings(BaseSettings):
     ssl_keyfile: Optional[Path] = None
     ssl_keyfile_password: Optional[str] = None
     workers: Union[int, None] = None
+
 
 
 class DoclingServeSettings(BaseSettings):
@@ -75,7 +77,6 @@ class DoclingServeSettings(BaseSettings):
             if self.eng_kfp_endpoint is None:
                 raise ValueError("KFP endpoint is required when using the KFP engine.")
 
-        if self.eng_kind == AsyncEngine.KFP:
             if not self.eng_kfp_experimental:
                 raise ValueError(
                     "KFP is not yet working. To enable the development version, you must set DOCLING_SERVE_ENG_KFP_EXPERIMENTAL=true."
@@ -86,3 +87,11 @@ class DoclingServeSettings(BaseSettings):
 
 uvicorn_settings = UvicornSettings()
 docling_serve_settings = DoclingServeSettings()
+
+# ADD Arabic settings instance here
+try:
+    from docling_serve.arabic_settings import ArabicCorrectionSettings
+    arabic_correction_settings = ArabicCorrectionSettings()
+except ImportError:
+    # Fallback if arabic_settings is not available
+    arabic_correction_settings = None

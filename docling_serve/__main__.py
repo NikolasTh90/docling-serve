@@ -15,7 +15,6 @@ from docling_serve.settings import docling_serve_settings, uvicorn_settings
 warnings.filterwarnings(action="ignore", category=UserWarning, module="pydantic|torch")
 warnings.filterwarnings(action="ignore", category=FutureWarning, module="easyocr")
 
-
 err_console = Console(stderr=True)
 console = Console()
 
@@ -125,7 +124,7 @@ def _run(
         console.print("")
         console.print(
             "Running in development mode, for production use: "
-            "[bold]docling-serve run[/]",
+            "[bold]docling-serve run[/bold]",
         )
 
     console.print("")
@@ -145,6 +144,7 @@ def _run(
         ssl_certfile=uvicorn_settings.ssl_certfile,
         ssl_keyfile=uvicorn_settings.ssl_keyfile,
         ssl_keyfile_password=uvicorn_settings.ssl_keyfile_password,
+        log_level=uvicorn_settings.log_level,
     )
 
 
@@ -229,7 +229,6 @@ def dev(
     Options can be set also with the corresponding ENV variable, with the exception
     of --enable-ui, --host and --reload.
     """
-
     uvicorn_settings.host = host
     uvicorn_settings.port = port
     uvicorn_settings.reload = reload
@@ -338,7 +337,6 @@ def run(
     Options can be set also with the corresponding ENV variable, e.g. UVICORN_PORT
     or DOCLING_SERVE_ENABLE_UI.
     """
-
     uvicorn_settings.host = host
     uvicorn_settings.port = port
     uvicorn_settings.reload = reload
@@ -361,6 +359,5 @@ def main() -> None:
     app()
 
 
-# Launch the CLI when calling python -m docling_serve
 if __name__ == "__main__":
     main()

@@ -41,12 +41,16 @@ dependencies = [
     "typer~=0.12",
     "uvicorn[standard]>=0.29.0,<1.0.0",
     "websockets~=14.0",
+    "langdetect>=1.0.9",
+    "ollama>=0.4.8",
 ]
 
 [project.optional-dependencies]
 ui = [
     "gradio~=5.9",
     "pydantic<2.11.0",  # fix compatibility between gradio and new pydantic 2.11
+    "watchfiles<0.20.0",   # ← pin WatchFiles so Uvicorn’s reload still works
+
 ]
 tesserocr = [
     "tesserocr~=2.7"
@@ -65,6 +69,10 @@ cu124 = [
 ]
 flash-attn = [
   "flash-attn~=2.7.0; sys_platform == 'linux' and platform_machine == 'x86_64'"
+]
+arabic = [
+    "langdetect>=1.0.9",
+    "ollama>=0.4.8",
 ]
 
 [dependency-groups]
