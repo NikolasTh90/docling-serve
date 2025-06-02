@@ -411,9 +411,15 @@ def get_ocrmypdf_status_with_validation():
     """Get OCRMyPDF status with validation."""
     try:
         import ocrmypdf
-        config = get_ocrmypdf_config()
         
-        if config["enabled"]:
+        # Use new settings system if available, fallback to legacy config
+        if ocrmypdf_settings:
+            enabled = ocrmypdf_settings.enabled
+        else:
+            config = get_ocrmypdf_config()
+            enabled = config["enabled"]
+            
+        if enabled:
             return '<span style="color: green;">✅ OCRMyPDF Available & Enabled</span>'
         else:
             return '<span style="color: orange;">⚠️ OCRMyPDF Available but Disabled</span>'
@@ -439,11 +445,14 @@ def get_detailed_ocrmypdf_info():
                 • Timeout: {ocrmypdf_settings.timeout}s<br/>
                 • Max File Size: {ocrmypdf_settings.max_file_size_mb}MB<br/>
                 • Fail on Error: {ocrmypdf_settings.fail_on_error}<br/>
+                • Fallback on Failure: {ocrmypdf_settings.fallback_on_failure}<br/>
                 <br/>
                 <strong>Environment Variables:</strong><br/>
                 • DOCLING_OCRMYPDF_ENABLED: {ocrmypdf_settings.enabled}<br/>
                 • DOCLING_OCRMYPDF_DESKEW: {ocrmypdf_settings.deskew}<br/>
                 • DOCLING_OCRMYPDF_CLEAN: {ocrmypdf_settings.clean}<br/>
+                • DOCLING_OCRMYPDF_TIMEOUT: {ocrmypdf_settings.timeout}<br/>
+                • DOCLING_OCRMYPDF_MAX_FILE_SIZE_MB: {ocrmypdf_settings.max_file_size_mb}<br/>
             </div>
             """
         else:
@@ -454,7 +463,12 @@ def get_detailed_ocrmypdf_info():
                 <strong>OCRMyPDF Configuration (Legacy):</strong><br/>
                 • Enabled: {'Yes' if config['enabled'] else 'No'}<br/>
                 • Version: {ocrmypdf.__version__}<br/>
+                • Deskew: {'Yes' if config.get('deskew', True) else 'No'}<br/>
+                • Clean: {'Yes' if config.get('clean', True) else 'No'}<br/>
+                • Timeout: {config.get('timeout', 300)}s<br/>
                 • Mode: Accuracy-oriented preprocessing<br/>
+                <br/>
+                <em>Note: Using legacy configuration. Consider upgrading to settings-based config.</em>
             </div>
             """
         return info_html
@@ -473,10 +487,20 @@ def test_ocrmypdf_connection():
         # Create a minimal test to verify OCRMyPDF works
         test_result = "✅ OCRMyPDF is properly installed and functional"
         
-        # You could add more sophisticated testing here if needed
-        config = get_ocrmypdf_config()
-        if not config["enabled"]:
-            test_result += "\n⚠️  Note: OCRMyPDF is disabled in configuration"
+        # Check configuration status
+        if ocrmypdf_settings:
+            if not ocrmypdf_settings.enabled:
+                test_result += "\n⚠️  Note: OCRMyPDF is disabled in configuration (DOCLING_OCRMYPDF_ENABLED=false)"
+            else:
+                test_result += f"\n✅ OCRMyPDF is enabled with timeout: {ocrmypdf_settings.timeout}s"
+                test_result += f"\n✅ Max file size: {ocrmypdf_settings.max_file_size_mb}MB"
+        else:
+            # Fallback to legacy config
+            config = get_ocrmypdf_config()
+            if not config["enabled"]:
+                test_result += "\n⚠️  Note: OCRMyPDF is disabled in legacy configuration"
+            else:
+                test_result += "\n✅ OCRMyPDF is enabled (legacy configuration)"
             
         return test_result
         
@@ -484,6 +508,79 @@ def test_ocrmypdf_connection():
         return "❌ OCRMyPDF package not installed. Please install with: pip install ocrmypdf"
     except Exception as e:
         return f"❌ OCRMyPDF test failed: {str(e)}"
+
+def log_ocrmypdf_startup_status():
+    """Log OCRMyPDF status on startup for debugging."""
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        if ocrmypdf_settings:
+            logger.info(f"OCRMyPDF Preprocessing - Enabled: {ocrmypdf_settings.enabled}")
+            logger.info(f"OCRMyPDF Preprocessing - Timeout: {ocrmypdf_settings.timeout}s")
+            logger.info(f"OCRMyPDF Preprocessing - Max File Size: {ocrmypdf_settings.max_file_size_mb}MB")
+            logger.info(f"OCRMyPDF Preprocessing - Fail on Error: {ocrmypdf_settings.fail_on_error}")
+            logger.info(f"OCRMyPDF Preprocessing - Fallback on Failure: {ocrmypdf_settings.fallback_on_failure}")
+        else:
+            config = get_ocrmypdf_config()
+            logger.info(f"OCRMyPDF Preprocessing (Legacy) - Enabled: {config['enabled']}")
+            logger.warning("OCRMyPDF using legacy configuration. Consider upgrading to settings-based config.")
+            
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error checking OCRMyPDF status on startup: {e}")
+
+def validate_ocrmypdf_environment():
+    """Validate OCRMyPDF environment and return status information."""
+    validation_result = {
+        "status": "unknown",
+        "issues": [],
+        "warnings": [],
+        "info": []
+    }
+    
+    try:
+        # Check if ocrmypdf package is installed
+        import ocrmypdf
+        validation_result["info"].append(f"OCRMyPDF version {ocrmypdf.__version__} is installed")
+        
+        # Check settings availability
+        if ocrmypdf_settings:
+            validation_result["status"] = "enabled" if ocrmypdf_settings.enabled else "disabled"
+            validation_result["info"].append("Using modern settings-based configuration")
+            
+            # Validate settings
+            if ocrmypdf_settings.timeout <= 0:
+                validation_result["issues"].append("Invalid timeout value - must be positive")
+            
+            if ocrmypdf_settings.max_file_size_mb <= 0:
+                validation_result["issues"].append("Invalid max file size - must be positive")
+                
+            if not ocrmypdf_settings.supported_extensions:
+                validation_result["issues"].append("No supported file extensions configured")
+                
+            # Warnings for common misconfigurations
+            if ocrmypdf_settings.timeout < 60:
+                validation_result["warnings"].append("Timeout is very short - may cause processing failures")
+                
+            if ocrmypdf_settings.max_file_size_mb > 500:
+                validation_result["warnings"].append("Very large max file size - may cause memory issues")
+                
+        else:
+            # Fallback to legacy config
+            config = get_ocrmypdf_config()
+            validation_result["status"] = "enabled" if config["enabled"] else "disabled"
+            validation_result["warnings"].append("Using legacy configuration - consider upgrading")
+            
+    except ImportError:
+        validation_result["status"] = "not_installed"
+        validation_result["issues"].append("OCRMyPDF package not installed")
+    except Exception as e:
+        validation_result["status"] = "error"
+        validation_result["issues"].append(f"Configuration error: {str(e)}")
+        
+    return validation_result
 
 def set_options_visibility(x):
     return gr.Accordion("Options", open=x)
