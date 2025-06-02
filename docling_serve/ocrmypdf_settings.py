@@ -16,7 +16,7 @@ class OCRMyPDFSettings(BaseSettings):
     optimize: int = 1
     color_conversion_strategy: str = "RGB"
     oversample: int = 300
-    remove_background: bool = True
+    # remove_background: bool = True
     force_ocr: bool = True
     skip_text: bool = False
     redo_ocr: bool = False  # Changed to False to avoid conflicts with preprocessing options

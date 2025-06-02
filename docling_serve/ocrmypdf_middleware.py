@@ -104,7 +104,7 @@ class OCRMyPDFMiddleware:
                     'optimize': self.settings.optimize,
                     'color_conversion_strategy': self.settings.color_conversion_strategy,
                     'oversample': self.settings.oversample,
-                    'remove_background': use_remove_background,
+                    # 'remove_background': use_remove_background,
                     'force_ocr': self.settings.force_ocr,
                     'skip_text': self.settings.skip_text,
                     'redo_ocr': use_redo_ocr,
