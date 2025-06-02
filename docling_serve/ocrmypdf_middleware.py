@@ -96,12 +96,12 @@ class OCRMyPDFMiddleware:
                     'color_conversion_strategy': self.settings.color_conversion_strategy,
                     'oversample': self.settings.oversample,
                     'remove_background': self.settings.remove_background,
-                    'threshold': self.settings.threshold,
+                    # 'threshold': self.settings.threshold,
                     'force_ocr': self.settings.force_ocr,
                     'skip_text': self.settings.skip_text,
                     'redo_ocr': self.settings.redo_ocr,
                     'progress_bar': self.settings.progress_bar,
-                    'quiet': self.settings.quiet
+                    # 'quiet': self.settings.quiet
                 }
                 
                 # Add language specification if provided

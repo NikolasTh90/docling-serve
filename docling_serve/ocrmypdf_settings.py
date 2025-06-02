@@ -17,12 +17,12 @@ class OCRMyPDFSettings(BaseSettings):
     color_conversion_strategy: str = "RGB"
     oversample: int = 300
     remove_background: bool = True
-    threshold: bool = True
+    # threshold: bool = True
     force_ocr: bool = True
     skip_text: bool = False
     redo_ocr: bool = True
     progress_bar: bool = False
-    quiet: bool = True
+    # quiet: bool = True
     timeout: int = 300  # 5 minutes timeout for OCRMyPDF processing
     
     # Language settings
