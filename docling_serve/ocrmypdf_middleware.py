@@ -7,12 +7,23 @@ import ocrmypdf
 from docling.datamodel.base_models import DocumentStream
 
 from .ocr_language_utils import convert_to_tesseract_codes, format_for_ocrmypdf
-from .settings import ocrmypdf_settings
-
+# Import settings with proper fallback
+try:
+    from .settings import ocrmypdf_settings
+except ImportError:
+    ocrmypdf_settings = None
 
 class OCRMyPDFMiddleware:
     def __init__(self, settings=None):
-        self.settings = settings or ocrmypdf_settings
+        if settings is not None:
+            self.settings = settings
+        else:
+            try:
+                from .settings import ocrmypdf_settings
+                self.settings = ocrmypdf_settings
+            except (ImportError, AttributeError):
+                self.settings = None
+        
         self.enabled = self.settings.enabled if self.settings else False
         self.logger = logging.getLogger(__name__)
         
@@ -21,6 +32,8 @@ class OCRMyPDFMiddleware:
             self.logger.info(f"OCRMyPDF Middleware initialized - Enabled: {self.enabled}")
             if self.enabled:
                 self.logger.debug(f"OCRMyPDF Settings - Deskew: {self.settings.deskew}, Clean: {self.settings.clean}")
+        else:
+            self.logger.warning("OCRMyPDF settings not available - middleware disabled")
         
     def should_preprocess_file(self, filename: str) -> bool:
         """Check if file should be preprocessed with OCRMyPDF."""

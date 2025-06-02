@@ -87,18 +87,20 @@ class DoclingServeSettings(BaseSettings):
 uvicorn_settings = UvicornSettings()
 docling_serve_settings = DoclingServeSettings()
 
-# Arabic settings instance
+# Arabic settings instance with error handling
 try:
     from docling_serve.arabic_settings import ArabicCorrectionSettings
     arabic_correction_settings = ArabicCorrectionSettings()
-except ImportError:
-    # Fallback if arabic_settings is not available
+except ImportError as e:
+    import logging
+    logging.getLogger(__name__).warning(f"Arabic correction settings not available: {e}")
     arabic_correction_settings = None
 
-# OCRMyPDF settings instance
+# OCRMyPDF settings instance with error handling
 try:
     from docling_serve.ocrmypdf_settings import OCRMyPDFSettings
     ocrmypdf_settings = OCRMyPDFSettings()
-except ImportError:
-    # Fallback if ocrmypdf_settings is not available
+except ImportError as e:
+    import logging
+    logging.getLogger(__name__).warning(f"OCRMyPDF settings not available: {e}")
     ocrmypdf_settings = None

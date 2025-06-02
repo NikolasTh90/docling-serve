@@ -58,17 +58,6 @@ from docling_serve.helper_functions import FormDepends
 from docling_serve.settings import docling_serve_settings
 from docling_serve.storage import get_scratch
 
-from docling_serve.settings import docling_serve_settings, arabic_correction_settings
-from docling_serve.arabic_correction_middleware import ArabicCorrectionMiddleware
-
-from docling_serve.ocrmypdf_middleware import OCRMyPDFMiddleware
-from docling_serve.config import get_ocrmypdf_config  # You'll need to create this
-from docling_serve.settings import ocrmypdf_settings
-
-# Initialize middleware instances (likely near where arabic_middleware is initialized)
-ocrmypdf_config = get_ocrmypdf_config()
-ocrmypdf_middleware = OCRMyPDFMiddleware(settings=ocrmypdf_settings)
-
 
 
 
@@ -102,6 +91,27 @@ for handler in root_logger.handlers:  # Iterate through existing handlers
         handler.setFormatter(ColoredLogFormatter(handler.formatter._fmt))
 
 _log = logging.getLogger(__name__)
+
+# Initialize middleware instances with proper error handling
+try:
+    from docling_serve.settings import ocrmypdf_settings
+    from docling_serve.ocrmypdf_middleware import OCRMyPDFMiddleware
+    ocrmypdf_middleware = OCRMyPDFMiddleware(settings=ocrmypdf_settings)
+except ImportError as e:
+    _log.warning(f"OCRMyPDF middleware not available: {e}")
+    ocrmypdf_middleware = None
+
+try:
+    from docling_serve.settings import arabic_correction_settings  
+    from docling_serve.arabic_correction_middleware import ArabicCorrectionMiddleware
+    arabic_middleware = ArabicCorrectionMiddleware(
+        enabled=arabic_correction_settings.enabled if arabic_correction_settings else False,
+        ollama_host=arabic_correction_settings.ollama_host if arabic_correction_settings else "http://localhost:11434",
+        model_name=arabic_correction_settings.model_name if arabic_correction_settings else "command-r7b-arabic"
+    )
+except ImportError as e:
+    _log.warning(f"Arabic correction middleware not available: {e}")
+    arabic_middleware = None
 
 
 # Context manager to initialize and clean up the lifespan of the FastAPI app
@@ -276,19 +286,23 @@ def create_app():  # noqa: C901
             name = file.filename if file.filename else f"file{suffix}.pdf"
             file_sources.append(DocumentStream(name=name, stream=buf))
 
-        # Apply OCRMyPDF preprocessing if enabled
+        # Apply OCRMyPDF preprocessing if enabled and available
         enable_ocrmypdf = getattr(options, 'enable_ocrmypdf_preprocessing', False)
-        if enable_ocrmypdf and ocrmypdf_middleware.enabled:
+        if enable_ocrmypdf and ocrmypdf_middleware and ocrmypdf_middleware.enabled:
             _log.info("Applying OCRMyPDF preprocessing to uploaded files")
             ocrmypdf_deskew = getattr(options, 'ocrmypdf_deskew', True)
             ocrmypdf_clean = getattr(options, 'ocrmypdf_clean', True)
+            ocr_languages = getattr(options, 'ocr_lang', None)
             
             file_sources = ocrmypdf_middleware.preprocess_document_streams(
                 file_sources,
                 enable_preprocessing=True,
                 deskew=ocrmypdf_deskew,
-                clean=ocrmypdf_clean
+                clean=ocrmypdf_clean,
+                ocr_languages=ocr_languages
             )
+        elif enable_ocrmypdf:
+            _log.warning("OCRMyPDF preprocessing requested but middleware not available")
 
         task = await orchestrator.enqueue(sources=file_sources, options=options)
         return task
