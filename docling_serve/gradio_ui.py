@@ -20,9 +20,13 @@ from docling.datamodel.pipeline_options import (
     TableStructureOptions,
 )
 
-from docling_serve import ocrmypdf_settings
 from docling_serve.helper_functions import _to_list_of_strings
 from docling_serve.settings import docling_serve_settings, uvicorn_settings
+
+try:
+    from docling_serve.settings import ocrmypdf_settings
+except ImportError:
+    ocrmypdf_settings = None
 
 
 # ADD THESE IMPORTS for Arabic correction settings
