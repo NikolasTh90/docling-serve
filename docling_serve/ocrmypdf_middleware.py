@@ -7,35 +7,58 @@ import ocrmypdf
 from docling.datamodel.base_models import DocumentStream
 
 from .ocr_language_utils import convert_to_tesseract_codes, format_for_ocrmypdf
+from .settings import ocrmypdf_settings
 
 
 class OCRMyPDFMiddleware:
-    def __init__(self, enabled: bool = True):
-        self.enabled = enabled
+    def __init__(self, settings=None):
+        self.settings = settings or ocrmypdf_settings
+        self.enabled = self.settings.enabled if self.settings else False
         self.logger = logging.getLogger(__name__)
+        
+        # Log configuration on initialization
+        if self.settings:
+            self.logger.info(f"OCRMyPDF Middleware initialized - Enabled: {self.enabled}")
+            if self.enabled:
+                self.logger.debug(f"OCRMyPDF Settings - Deskew: {self.settings.deskew}, Clean: {self.settings.clean}")
         
     def should_preprocess_file(self, filename: str) -> bool:
         """Check if file should be preprocessed with OCRMyPDF."""
-        if not self.enabled:
+        if not self.enabled or not self.settings:
             return False
             
-        # Only process PDF files
-        return filename.lower().endswith('.pdf')
+        # Check file extension
+        file_ext = Path(filename).suffix.lower()
+        return file_ext in self.settings.supported_extensions
         
     def preprocess_file(
         self, 
         file_stream: BytesIO, 
         filename: str,
-        deskew: bool = True,
-        clean: bool = True,
+        deskew: Optional[bool] = None,
+        clean: Optional[bool] = None,
         ocr_languages: Optional[List[str]] = None,
     ) -> BytesIO:
         """Preprocess PDF file with OCRMyPDF for improved OCR accuracy."""
         if not self.should_preprocess_file(filename):
             return file_stream
             
+        if not self.settings:
+            self.logger.warning("OCRMyPDF settings not available, skipping preprocessing")
+            return file_stream
+            
+        # Check file size
+        file_size_mb = len(file_stream.getvalue()) / (1024 * 1024)
+        if file_size_mb > self.settings.max_file_size_mb:
+            self.logger.warning(f"File {filename} ({file_size_mb:.1f}MB) exceeds max size ({self.settings.max_file_size_mb}MB)")
+            return file_stream
+            
         try:
-            self.logger.info(f"Preprocessing {filename} with OCRMyPDF")
+            self.logger.info(f"Preprocessing {filename} with OCRMyPDF (size: {file_size_mb:.1f}MB)")
+            
+            # Use settings values or parameter overrides
+            use_deskew = deskew if deskew is not None else self.settings.deskew
+            use_clean = clean if clean is not None else self.settings.clean
             
             # Convert language codes to Tesseract format
             tesseract_languages = convert_to_tesseract_codes(ocr_languages, self.logger)
@@ -50,22 +73,22 @@ class OCRMyPDFMiddleware:
                 output_path = Path(output_temp.name)
                 
             try:
-                # Configure OCRMyPDF for accuracy-oriented processing
+                # Configure OCRMyPDF using settings
                 ocrmypdf_args = {
                     'input_file': input_path,
                     'output_file': output_path,
-                    'deskew': deskew,
-                    'clean': clean,
-                    'optimize': 1,  # Light optimization
-                    'color_conversion_strategy': 'RGB',
-                    'oversample': 300,  # High quality oversampling
-                    'remove_background': True,
-                    'threshold': True,
-                    'force_ocr': True,
-                    'skip_text': False,  # Don't skip existing text
-                    'redo_ocr': True,
-                    'progress_bar': False,
-                    'quiet': True
+                    'deskew': use_deskew,
+                    'clean': use_clean,
+                    'optimize': self.settings.optimize,
+                    'color_conversion_strategy': self.settings.color_conversion_strategy,
+                    'oversample': self.settings.oversample,
+                    'remove_background': self.settings.remove_background,
+                    'threshold': self.settings.threshold,
+                    'force_ocr': self.settings.force_ocr,
+                    'skip_text': self.settings.skip_text,
+                    'redo_ocr': self.settings.redo_ocr,
+                    'progress_bar': self.settings.progress_bar,
+                    'quiet': self.settings.quiet
                 }
                 
                 # Add language specification if provided
@@ -74,8 +97,18 @@ class OCRMyPDFMiddleware:
                     ocrmypdf_args['language'] = language_string
                     self.logger.info(f"Using OCRMyPDF with languages: {language_string}")
                 
-                # Run OCRMyPDF
-                ocrmypdf.ocr(**ocrmypdf_args)
+                # Run OCRMyPDF with timeout
+                import signal
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("OCRMyPDF processing timed out")
+                
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(self.settings.timeout)
+                
+                try:
+                    ocrmypdf.ocr(**ocrmypdf_args)
+                finally:
+                    signal.alarm(0)  # Cancel the alarm
                 
                 # Read the processed file
                 with open(output_path, 'rb') as f:
@@ -91,19 +124,25 @@ class OCRMyPDFMiddleware:
                 
         except Exception as e:
             self.logger.error(f"OCRMyPDF preprocessing failed for {filename}: {e}")
-            # Return original file if preprocessing fails
-            return file_stream
+            
+            if self.settings.fail_on_error:
+                raise
+            elif self.settings.fallback_on_failure:
+                self.logger.info(f"Falling back to original file for {filename}")
+                return file_stream
+            else:
+                raise
             
     def preprocess_document_streams(
         self, 
         file_sources: List[DocumentStream],
         enable_preprocessing: bool = False,
-        deskew: bool = True,
-        clean: bool = True,
+        deskew: Optional[bool] = None,
+        clean: Optional[bool] = None,
         ocr_languages: Optional[List[str]] = None,
     ) -> List[DocumentStream]:
         """Preprocess multiple DocumentStream objects."""
-        if not enable_preprocessing or not self.enabled:
+        if not enable_preprocessing or not self.enabled or not self.settings:
             return file_sources
             
         processed_sources = []
@@ -123,7 +162,11 @@ class OCRMyPDFMiddleware:
                 )
             except Exception as e:
                 self.logger.error(f"Failed to preprocess {source.name}: {e}")
-                # Use original source if preprocessing fails
-                processed_sources.append(source)
+                
+                if self.settings.fail_on_error:
+                    raise
+                else:
+                    # Use original source if preprocessing fails
+                    processed_sources.append(source)
                 
         return processed_sources

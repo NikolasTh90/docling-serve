@@ -27,7 +27,6 @@ class UvicornSettings(BaseSettings):
     workers: Union[int, None] = None
 
 
-
 class DoclingServeSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="DOCLING_SERVE_",
@@ -88,10 +87,18 @@ class DoclingServeSettings(BaseSettings):
 uvicorn_settings = UvicornSettings()
 docling_serve_settings = DoclingServeSettings()
 
-# ADD Arabic settings instance here
+# Arabic settings instance
 try:
     from docling_serve.arabic_settings import ArabicCorrectionSettings
     arabic_correction_settings = ArabicCorrectionSettings()
 except ImportError:
     # Fallback if arabic_settings is not available
     arabic_correction_settings = None
+
+# OCRMyPDF settings instance
+try:
+    from docling_serve.ocrmypdf_settings import OCRMyPDFSettings
+    ocrmypdf_settings = OCRMyPDFSettings()
+except ImportError:
+    # Fallback if ocrmypdf_settings is not available
+    ocrmypdf_settings = None

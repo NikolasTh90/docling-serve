@@ -20,6 +20,7 @@ from docling.datamodel.pipeline_options import (
     TableStructureOptions,
 )
 
+from docling_serve import ocrmypdf_settings
 from docling_serve.helper_functions import _to_list_of_strings
 from docling_serve.settings import docling_serve_settings, uvicorn_settings
 
@@ -425,21 +426,37 @@ def get_detailed_ocrmypdf_info():
     """Get detailed OCRMyPDF configuration information."""
     try:
         import ocrmypdf
-        config = get_ocrmypdf_config()
         
-        info_html = f"""
-        <div style="font-size: 12px; color: #666;">
-            <strong>OCRMyPDF Configuration:</strong><br/>
-            • Enabled: {'Yes' if config['enabled'] else 'No'}<br/>
-            • Version: {ocrmypdf.__version__}<br/>
-            • Mode: Accuracy-oriented preprocessing<br/>
-            • File Types: PDF only<br/>
-            • Features: Deskewing, cleaning, optimization<br/>
-            <br/>
-            <strong>Environment:</strong><br/>
-            • DOCLING_SERVE_ENABLE_OCRMYPDF: {config['enabled']}<br/>
-        </div>
-        """
+        if ocrmypdf_settings:
+            info_html = f"""
+            <div style="font-size: 12px; color: #666;">
+                <strong>OCRMyPDF Configuration:</strong><br/>
+                • Enabled: {'Yes' if ocrmypdf_settings.enabled else 'No'}<br/>
+                • Version: {ocrmypdf.__version__}<br/>
+                • Deskew: {ocrmypdf_settings.deskew}<br/>
+                • Clean: {ocrmypdf_settings.clean}<br/>
+                • Oversample: {ocrmypdf_settings.oversample}<br/>
+                • Timeout: {ocrmypdf_settings.timeout}s<br/>
+                • Max File Size: {ocrmypdf_settings.max_file_size_mb}MB<br/>
+                • Fail on Error: {ocrmypdf_settings.fail_on_error}<br/>
+                <br/>
+                <strong>Environment Variables:</strong><br/>
+                • DOCLING_OCRMYPDF_ENABLED: {ocrmypdf_settings.enabled}<br/>
+                • DOCLING_OCRMYPDF_DESKEW: {ocrmypdf_settings.deskew}<br/>
+                • DOCLING_OCRMYPDF_CLEAN: {ocrmypdf_settings.clean}<br/>
+            </div>
+            """
+        else:
+            # Fallback to legacy config
+            config = get_ocrmypdf_config()
+            info_html = f"""
+            <div style="font-size: 12px; color: #666;">
+                <strong>OCRMyPDF Configuration (Legacy):</strong><br/>
+                • Enabled: {'Yes' if config['enabled'] else 'No'}<br/>
+                • Version: {ocrmypdf.__version__}<br/>
+                • Mode: Accuracy-oriented preprocessing<br/>
+            </div>
+            """
         return info_html
     except ImportError:
         return '<div style="color: red;">OCRMyPDF package not installed. Install with: pip install ocrmypdf</div>'
