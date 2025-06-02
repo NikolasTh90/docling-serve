@@ -375,6 +375,40 @@ class ConvertDocumentsOptions(BaseModel):
         description="Enable Arabic OCR error correction using LLM"
     )
 
+    enable_ocrmypdf_preprocessing: Annotated[
+        bool,
+        Field(
+            description=(
+                "If enabled, preprocess uploaded files with ocrmypdf using "
+                "deep and accuracy-oriented parameters before starting the "
+                "default OCR pipeline. Boolean. Optional, defaults to false."
+            ),
+            examples=[False],
+        ),
+    ] = False
+
+    ocrmypdf_deskew: Annotated[
+        bool,
+        Field(
+            description=(
+                "Apply deskewing to correct rotated pages during ocrmypdf preprocessing. "
+                "Boolean. Optional, defaults to true."
+            ),
+            examples=[True],
+        ),
+    ] = True
+
+    ocrmypdf_clean: Annotated[
+        bool,
+        Field(
+            description=(
+                "Apply page cleaning to remove artifacts during ocrmypdf preprocessing. "
+                "Boolean. Optional, defaults to true."
+            ),
+            examples=[True],
+        ),
+    ] = True
+
     @model_validator(mode="after")
     def picture_description_exclusivity(self) -> Self:
         # Validate picture description options

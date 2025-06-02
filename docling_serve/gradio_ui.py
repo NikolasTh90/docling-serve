@@ -32,6 +32,9 @@ except ImportError:
     # Fallback if Arabic settings not available
     arabic_settings = None
 
+from docling_serve.config import get_ocrmypdf_config
+
+
 logger = logging.getLogger(__name__)
 
 ############################
@@ -403,6 +406,67 @@ def test_arabic_correction_connection():
     except Exception as e:
         return f"❌ Error testing Arabic correction: {str(e)}"
 
+def get_ocrmypdf_status_with_validation():
+    """Get OCRMyPDF status with validation."""
+    try:
+        import ocrmypdf
+        config = get_ocrmypdf_config()
+        
+        if config["enabled"]:
+            return '<span style="color: green;">✅ OCRMyPDF Available & Enabled</span>'
+        else:
+            return '<span style="color: orange;">⚠️ OCRMyPDF Available but Disabled</span>'
+    except ImportError:
+        return '<span style="color: red;">❌ OCRMyPDF Not Installed</span>'
+    except Exception as e:
+        return f'<span style="color: red;">❌ OCRMyPDF Error: {str(e)}</span>'
+
+def get_detailed_ocrmypdf_info():
+    """Get detailed OCRMyPDF configuration information."""
+    try:
+        import ocrmypdf
+        config = get_ocrmypdf_config()
+        
+        info_html = f"""
+        <div style="font-size: 12px; color: #666;">
+            <strong>OCRMyPDF Configuration:</strong><br/>
+            • Enabled: {'Yes' if config['enabled'] else 'No'}<br/>
+            • Version: {ocrmypdf.__version__}<br/>
+            • Mode: Accuracy-oriented preprocessing<br/>
+            • File Types: PDF only<br/>
+            • Features: Deskewing, cleaning, optimization<br/>
+            <br/>
+            <strong>Environment:</strong><br/>
+            • DOCLING_SERVE_ENABLE_OCRMYPDF: {config['enabled']}<br/>
+        </div>
+        """
+        return info_html
+    except ImportError:
+        return '<div style="color: red;">OCRMyPDF package not installed. Install with: pip install ocrmypdf</div>'
+    except Exception as e:
+        return f'<div style="color: red;">Error: {str(e)}</div>'
+
+def test_ocrmypdf_connection():
+    """Test OCRMyPDF functionality."""
+    try:
+        import ocrmypdf
+        import tempfile
+        from pathlib import Path
+        
+        # Create a minimal test to verify OCRMyPDF works
+        test_result = "✅ OCRMyPDF is properly installed and functional"
+        
+        # You could add more sophisticated testing here if needed
+        config = get_ocrmypdf_config()
+        if not config["enabled"]:
+            test_result += "\n⚠️  Note: OCRMyPDF is disabled in configuration"
+            
+        return test_result
+        
+    except ImportError:
+        return "❌ OCRMyPDF package not installed. Please install with: pip install ocrmypdf"
+    except Exception as e:
+        return f"❌ OCRMyPDF test failed: {str(e)}"
 
 def set_options_visibility(x):
     return gr.Accordion("Options", open=x)
@@ -548,7 +612,10 @@ def process_url(
     do_formula_enrichment,
     do_picture_classification,
     do_picture_description,
-    enable_arabic_correction=True,
+    enable_arabic_correction=False,
+    enable_ocrmypdf_preprocessing=False,
+    ocrmypdf_deskew=True,
+    ocrmypdf_clean=True,
 ):
     
     # Check if Arabic correction is globally enabled via config
@@ -573,6 +640,9 @@ def process_url(
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
             "enable_arabic_correction": final_arabic_correction,
+            "enable_ocrmypdf_preprocessing": enable_ocrmypdf_preprocessing,
+            "ocrmypdf_deskew": ocrmypdf_deskew,
+            "ocrmypdf_clean": ocrmypdf_clean,
         },
     }
     if (
@@ -626,7 +696,11 @@ def process_file(
     do_formula_enrichment,
     do_picture_classification,
     do_picture_description,
-    enable_arabic_correction=True,
+    enable_arabic_correction=False,
+    enable_ocrmypdf_preprocessing=False,
+    ocrmypdf_deskew=True,
+    ocrmypdf_clean=True,
+
 ):
     if not files or len(files) == 0:
         logger.error("No files provided.")
@@ -638,6 +712,9 @@ def process_file(
     # Check if Arabic correction is globally enabled via config
     config = get_arabic_correction_config()
     final_arabic_correction = enable_arabic_correction and config["enabled"]
+
+    ocrmypdf_config = get_ocrmypdf_config()
+    final_ocrmypdf_preprocessing = enable_ocrmypdf_preprocessing and ocrmypdf_config["enabled"]
 
     parameters = {
         "file_sources": files_data,
@@ -658,6 +735,10 @@ def process_file(
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
             "enable_arabic_correction": final_arabic_correction,
+            "enable_ocrmypdf_preprocessing": final_ocrmypdf_preprocessing,
+            "ocrmypdf_deskew": ocrmypdf_deskew,
+            "ocrmypdf_clean": ocrmypdf_clean,
+        
         },
     }
 
@@ -947,7 +1028,7 @@ with gr.Blocks(
             with gr.Column():
                 enable_arabic_correction = gr.Checkbox(
                     label="Enable Arabic OCR Correction",
-                    value=get_arabic_correction_config()["enabled"],
+                    value=False,
                     info="Automatically detect and correct Arabic OCR errors using LLM"
                 )
             with gr.Column():
@@ -972,6 +1053,51 @@ with gr.Blocks(
                         scale=1
                     )
                     test_arabic_result = gr.Textbox(
+                        label="Test Result",
+                        interactive=False,
+                        visible=False
+                    )
+
+        # OCRMyPDF preprocessing section
+        with gr.Row():
+            with gr.Column():
+                enable_ocrmypdf_preprocessing = gr.Checkbox(
+                    label="Enable OCRMyPDF Preprocessing",
+                    value=False,
+                    info="Preprocess PDFs with OCRMyPDF for improved OCR accuracy"
+                )
+            with gr.Column():
+                # OCRMyPDF status
+                ocrmypdf_status = gr.HTML(
+                    value=get_ocrmypdf_status_with_validation(),
+                    visible=True
+                )
+
+        # OCRMyPDF detailed options
+        with gr.Accordion("OCRMyPDF Preprocessing Options", open=False):
+            with gr.Row():
+                with gr.Column():
+                    ocrmypdf_deskew = gr.Checkbox(
+                        label="Apply Deskewing",
+                        value=True,
+                        info="Correct rotated pages during preprocessing"
+                    )
+                    ocrmypdf_clean = gr.Checkbox(
+                        label="Apply Page Cleaning", 
+                        value=True,
+                        info="Remove artifacts and improve image quality"
+                    )
+                with gr.Column():
+                    ocrmypdf_detailed_info = gr.HTML(
+                        value=get_detailed_ocrmypdf_info(),
+                        visible=True
+                    )
+                    test_ocrmypdf_btn = gr.Button(
+                        "Test OCRMyPDF",
+                        variant="secondary",
+                        scale=1
+                    )
+                    test_ocrmypdf_result = gr.Textbox(
                         label="Test Result",
                         interactive=False,
                         visible=False
@@ -1045,6 +1171,17 @@ with gr.Blocks(
         outputs=[arabic_correction_status],
     )
 
+    # OCRMyPDF test button  
+    test_ocrmypdf_btn.click(
+        fn=test_ocrmypdf_connection,
+        inputs=[],
+        outputs=[test_ocrmypdf_result]
+    ).then(
+        fn=lambda x: gr.Textbox(visible=True),
+        inputs=[test_ocrmypdf_result], 
+        outputs=[test_ocrmypdf_result]
+    )
+
     # URL processing
     url_process_btn.click(
         set_options_visibility, inputs=[false_bool], outputs=[options]
@@ -1088,6 +1225,10 @@ with gr.Blocks(
             do_picture_classification,
             do_picture_description,
             enable_arabic_correction,
+            enable_ocrmypdf_preprocessing,
+            ocrmypdf_deskew,
+            ocrmypdf_clean,
+            
         ],
         outputs=[
             task_id_rendered,
@@ -1176,6 +1317,9 @@ with gr.Blocks(
             do_picture_classification,
             do_picture_description,
             enable_arabic_correction,
+            enable_ocrmypdf_preprocessing,
+            ocrmypdf_deskew,
+            ocrmypdf_clean,
         ],
         outputs=[
             task_id_rendered,

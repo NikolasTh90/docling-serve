@@ -61,6 +61,15 @@ from docling_serve.storage import get_scratch
 from docling_serve.settings import docling_serve_settings, arabic_correction_settings
 from docling_serve.arabic_correction_middleware import ArabicCorrectionMiddleware
 
+from docling_serve.ocrmypdf_middleware import OCRMyPDFMiddleware
+from docling_serve.config import get_ocrmypdf_config  # You'll need to create this
+
+# Initialize middleware instances (likely near where arabic_middleware is initialized)
+ocrmypdf_config = get_ocrmypdf_config()
+ocrmypdf_middleware = OCRMyPDFMiddleware(enabled=ocrmypdf_config["enabled"])
+
+
+
 
 # Set up custom logging as we'll be intermixes with FastAPI/Uvicorn's logging
 class ColoredLogFormatter(logging.Formatter):
@@ -265,6 +274,20 @@ def create_app():  # noqa: C901
             suffix = "" if len(file_sources) == 1 else f"_{i}"
             name = file.filename if file.filename else f"file{suffix}.pdf"
             file_sources.append(DocumentStream(name=name, stream=buf))
+
+        # Apply OCRMyPDF preprocessing if enabled
+        enable_ocrmypdf = getattr(options, 'enable_ocrmypdf_preprocessing', False)
+        if enable_ocrmypdf and ocrmypdf_middleware.enabled:
+            _log.info("Applying OCRMyPDF preprocessing to uploaded files")
+            ocrmypdf_deskew = getattr(options, 'ocrmypdf_deskew', True)
+            ocrmypdf_clean = getattr(options, 'ocrmypdf_clean', True)
+            
+            file_sources = ocrmypdf_middleware.preprocess_document_streams(
+                file_sources,
+                enable_preprocessing=True,
+                deskew=ocrmypdf_deskew,
+                clean=ocrmypdf_clean
+            )
 
         task = await orchestrator.enqueue(sources=file_sources, options=options)
         return task
