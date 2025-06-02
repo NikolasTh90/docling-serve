@@ -261,23 +261,44 @@ def create_app():  # noqa: C901
         orchestrator: BaseAsyncOrchestrator,
         conversion_request: ConvertDocumentsRequest,
     ) -> Task:
-        _log.info(f"Received source conversion request with {len(conversion_request.http_sources or [])} HTTP sources.")
-
-        # Get options from the request
-        options = conversion_request.options or ConvertDocumentsOptions()
         
-        # Create task sources from the request
-        file_sources: list[TaskSource] = []
-        
-        # Process HTTP sources
-        if conversion_request.http_sources:
-            for http_source in conversion_request.http_sources:
-                file_sources.append(http_source)
-        
-        # Process base64 sources
-        if conversion_request.base64_sources:
-            for base64_source in conversion_request.base64_sources:
-                file_sources.append(base64_source)
+        # Handle different request types
+        if hasattr(conversion_request, 'http_sources'):
+            # This is a ConvertDocumentsRequest with HTTP sources
+            sources_info = f"{len(conversion_request.http_sources or [])} HTTP sources"
+            _log.info(f"Received source conversion request with {sources_info}")
+            
+            # Get options from the request
+            options = conversion_request.options or ConvertDocumentsOptions()
+            
+            # Create task sources from HTTP sources
+            file_sources: list[TaskSource] = []
+            
+            # Process HTTP sources
+            if conversion_request.http_sources:
+                for http_source in conversion_request.http_sources:
+                    file_sources.append(http_source)
+                    
+        elif hasattr(conversion_request, 'file_sources'):
+            # This is a ConvertDocumentFileSourcesRequest with file sources (base64)
+            sources_info = f"{len(conversion_request.file_sources or [])} file sources"
+            _log.info(f"Received source conversion request with {sources_info}")
+            
+            # Get options from the request
+            options = conversion_request.options or ConvertDocumentsOptions()
+            
+            # Create task sources from file sources (base64)
+            file_sources: list[TaskSource] = []
+            
+            # Process base64 file sources
+            if conversion_request.file_sources:
+                for file_source in conversion_request.file_sources:
+                    file_sources.append(file_source)
+        else:
+            # Fallback - try to get any sources available
+            _log.warning("Unknown request type in _enque_source")
+            options = getattr(conversion_request, 'options', None) or ConvertDocumentsOptions()
+            file_sources = []
 
         # Apply OCRMyPDF preprocessing if enabled and available for PDF sources
         enable_ocrmypdf = getattr(options, 'enable_ocrmypdf_preprocessing', False)
@@ -288,7 +309,7 @@ def create_app():  # noqa: C901
             processed_sources = []
             for source in file_sources:
                 try:
-                    # Only preprocess if it's a PDF file
+                    # Handle HTTP sources (URLs)
                     if hasattr(source, 'url') and source.url.lower().endswith('.pdf'):
                         _log.info(f"Downloading and preprocessing PDF from URL: {source.url}")
                         
@@ -320,8 +341,35 @@ def create_app():  # noqa: C901
                         processed_source = DocumentStream(name=filename, stream=processed_stream)
                         processed_sources.append(processed_source)
                         
+                    # Handle base64 file sources
+                    elif hasattr(source, 'filename') and source.filename.lower().endswith('.pdf'):
+                        _log.info(f"Preprocessing base64 PDF file: {source.filename}")
+                        
+                        # Decode base64 content
+                        import base64
+                        file_content = base64.b64decode(source.base64_string)
+                        file_stream = BytesIO(file_content)
+                        
+                        # Apply OCRMyPDF preprocessing
+                        ocrmypdf_deskew = getattr(options, 'ocrmypdf_deskew', True)
+                        ocrmypdf_clean = getattr(options, 'ocrmypdf_clean', True)
+                        ocr_languages = getattr(options, 'ocr_lang', None)
+                        
+                        processed_stream = ocrmypdf_middleware.preprocess_file(
+                            file_stream,
+                            source.filename,
+                            deskew=ocrmypdf_deskew,
+                            clean=ocrmypdf_clean,
+                            ocr_languages=ocr_languages
+                        )
+                        
+                        # Convert back to DocumentStream
+                        processed_stream.seek(0)
+                        processed_source = DocumentStream(name=source.filename, stream=processed_stream)
+                        processed_sources.append(processed_source)
+                        
                     else:
-                        # Non-PDF sources or base64 sources - keep as is
+                        # Non-PDF sources - keep as is
                         processed_sources.append(source)
                         
                 except Exception as e:
