@@ -17,12 +17,10 @@ class OCRMyPDFSettings(BaseSettings):
     color_conversion_strategy: str = "RGB"
     oversample: int = 300
     remove_background: bool = True
-    # threshold: bool = True
     force_ocr: bool = True
     skip_text: bool = False
-    redo_ocr: bool = True
+    redo_ocr: bool = False  # Changed to False to avoid conflicts with preprocessing options
     progress_bar: bool = False
-    # quiet: bool = True
     timeout: int = 300  # 5 minutes timeout for OCRMyPDF processing
     
     # Language settings
@@ -30,7 +28,7 @@ class OCRMyPDFSettings(BaseSettings):
     language_detection: bool = True
     
     # File processing settings
-    max_file_size_mb: int = 100
+    max_file_size_mb: int = 200
     supported_extensions: List[str] = [".pdf"]
     
     # Error handling
@@ -40,3 +38,7 @@ class OCRMyPDFSettings(BaseSettings):
     # Performance settings
     parallel_processing: bool = True
     max_workers: Optional[int] = None
+    
+    # Advanced OCRMyPDF options
+    tesseract_timeout: Optional[float] = None
+    clean_final: bool = False  # This can also conflict with redo_ocr

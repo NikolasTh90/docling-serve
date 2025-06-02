@@ -15,6 +15,7 @@ except ImportError:
 
 class OCRMyPDFMiddleware:
     def __init__(self, settings=None):
+        # Use provided settings or try to import from settings module
         if settings is not None:
             self.settings = settings
         else:
@@ -72,6 +73,14 @@ class OCRMyPDFMiddleware:
             # Use settings values or parameter overrides
             use_deskew = deskew if deskew is not None else self.settings.deskew
             use_clean = clean if clean is not None else self.settings.clean
+            use_remove_background = self.settings.remove_background
+            use_redo_ocr = self.settings.redo_ocr
+            
+            # Handle OCRMyPDF parameter conflicts
+            # redo_ocr is incompatible with deskew, clean-final, and remove_background
+            if use_redo_ocr and (use_deskew or use_clean or use_remove_background):
+                self.logger.warning("redo_ocr conflicts with deskew/clean/remove_background. Prioritizing preprocessing options.")
+                use_redo_ocr = False  # Disable redo_ocr to allow preprocessing
             
             # Convert language codes to Tesseract format
             tesseract_languages = convert_to_tesseract_codes(ocr_languages, self.logger)
@@ -86,7 +95,7 @@ class OCRMyPDFMiddleware:
                 output_path = Path(output_temp.name)
                 
             try:
-                # Configure OCRMyPDF using settings
+                # Configure OCRMyPDF using settings with valid parameters only
                 ocrmypdf_args = {
                     'input_file': input_path,
                     'output_file': output_path,
@@ -95,20 +104,22 @@ class OCRMyPDFMiddleware:
                     'optimize': self.settings.optimize,
                     'color_conversion_strategy': self.settings.color_conversion_strategy,
                     'oversample': self.settings.oversample,
-                    'remove_background': self.settings.remove_background,
-                    # 'threshold': self.settings.threshold,
+                    'remove_background': use_remove_background,
                     'force_ocr': self.settings.force_ocr,
                     'skip_text': self.settings.skip_text,
-                    'redo_ocr': self.settings.redo_ocr,
+                    'redo_ocr': use_redo_ocr,
                     'progress_bar': self.settings.progress_bar,
-                    # 'quiet': self.settings.quiet
                 }
                 
                 # Add language specification if provided
                 if tesseract_languages:
-                    language_string = format_for_ocrmypdf(tesseract_languages)
-                    ocrmypdf_args['language'] = language_string
-                    self.logger.info(f"Using OCRMyPDF with languages: {language_string}")
+                    ocrmypdf_args['language'] = tesseract_languages  # Pass as list
+                    self.logger.info(f"Using OCRMyPDF with languages: {tesseract_languages}")
+                
+                # Log the final configuration for debugging
+                self.logger.debug(f"OCRMyPDF config: deskew={use_deskew}, clean={use_clean}, "
+                                f"remove_background={use_remove_background}, redo_ocr={use_redo_ocr}, "
+                                f"force_ocr={self.settings.force_ocr}")
                 
                 # Run OCRMyPDF with timeout
                 import signal
@@ -119,7 +130,8 @@ class OCRMyPDFMiddleware:
                 signal.alarm(self.settings.timeout)
                 
                 try:
-                    ocrmypdf.ocr(**ocrmypdf_args)
+                    result = ocrmypdf.ocr(**ocrmypdf_args)
+                    self.logger.debug(f"OCRMyPDF result: {result}")
                 finally:
                     signal.alarm(0)  # Cancel the alarm
                 
