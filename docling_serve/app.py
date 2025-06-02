@@ -63,10 +63,11 @@ from docling_serve.arabic_correction_middleware import ArabicCorrectionMiddlewar
 
 from docling_serve.ocrmypdf_middleware import OCRMyPDFMiddleware
 from docling_serve.config import get_ocrmypdf_config  # You'll need to create this
+from docling_serve.settings import ocrmypdf_settings
 
 # Initialize middleware instances (likely near where arabic_middleware is initialized)
 ocrmypdf_config = get_ocrmypdf_config()
-ocrmypdf_middleware = OCRMyPDFMiddleware(enabled=ocrmypdf_config["enabled"])
+ocrmypdf_middleware = OCRMyPDFMiddleware(settings=ocrmypdf_settings)
 
 
 
