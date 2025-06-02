@@ -258,17 +258,82 @@ def create_app():  # noqa: C901
     ########################
 
     async def _enque_source(
-        orchestrator: BaseAsyncOrchestrator, conversion_request: ConvertDocumentsRequest
+        orchestrator: BaseAsyncOrchestrator,
+        conversion_request: ConvertDocumentsRequest,
     ) -> Task:
-        sources: list[TaskSource] = []
-        if isinstance(conversion_request, ConvertDocumentFileSourcesRequest):
-            sources.extend(conversion_request.file_sources)
-        if isinstance(conversion_request, ConvertDocumentHttpSourcesRequest):
-            sources.extend(conversion_request.http_sources)
+        _log.info(f"Received source conversion request with {len(conversion_request.http_sources or [])} HTTP sources.")
 
-        task = await orchestrator.enqueue(
-            sources=sources, options=conversion_request.options
-        )
+        # Get options from the request
+        options = conversion_request.options or ConvertDocumentsOptions()
+        
+        # Create task sources from the request
+        file_sources: list[TaskSource] = []
+        
+        # Process HTTP sources
+        if conversion_request.http_sources:
+            for http_source in conversion_request.http_sources:
+                file_sources.append(http_source)
+        
+        # Process base64 sources
+        if conversion_request.base64_sources:
+            for base64_source in conversion_request.base64_sources:
+                file_sources.append(base64_source)
+
+        # Apply OCRMyPDF preprocessing if enabled and available for PDF sources
+        enable_ocrmypdf = getattr(options, 'enable_ocrmypdf_preprocessing', False)
+        if enable_ocrmypdf and ocrmypdf_middleware and ocrmypdf_middleware.enabled:
+            _log.info("OCRMyPDF preprocessing requested for source conversion")
+            
+            # Download and preprocess PDF files
+            processed_sources = []
+            for source in file_sources:
+                try:
+                    # Only preprocess if it's a PDF file
+                    if hasattr(source, 'url') and source.url.lower().endswith('.pdf'):
+                        _log.info(f"Downloading and preprocessing PDF from URL: {source.url}")
+                        
+                        # Download the file
+                        import httpx
+                        async with httpx.AsyncClient() as client:
+                            response = await client.get(source.url)
+                            response.raise_for_status()
+                            
+                        # Convert to DocumentStream for preprocessing
+                        file_stream = BytesIO(response.content)
+                        filename = source.url.split('/')[-1] or 'downloaded.pdf'
+                        
+                        # Apply OCRMyPDF preprocessing
+                        ocrmypdf_deskew = getattr(options, 'ocrmypdf_deskew', True)
+                        ocrmypdf_clean = getattr(options, 'ocrmypdf_clean', True)
+                        ocr_languages = getattr(options, 'ocr_lang', None)
+                        
+                        processed_stream = ocrmypdf_middleware.preprocess_file(
+                            file_stream,
+                            filename,
+                            deskew=ocrmypdf_deskew,
+                            clean=ocrmypdf_clean,
+                            ocr_languages=ocr_languages
+                        )
+                        
+                        # Convert back to DocumentStream
+                        processed_stream.seek(0)
+                        processed_source = DocumentStream(name=filename, stream=processed_stream)
+                        processed_sources.append(processed_source)
+                        
+                    else:
+                        # Non-PDF sources or base64 sources - keep as is
+                        processed_sources.append(source)
+                        
+                except Exception as e:
+                    _log.error(f"Failed to preprocess source: {e}")
+                    # Use original source if preprocessing fails
+                    processed_sources.append(source)
+            
+            file_sources = processed_sources
+        elif enable_ocrmypdf:
+            _log.warning("OCRMyPDF preprocessing requested but middleware not available")
+
+        task = await orchestrator.enqueue(sources=file_sources, options=options)
         return task
 
     async def _enque_file(
