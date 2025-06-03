@@ -20,7 +20,7 @@ class UvicornSettings(BaseSettings):
     reload: bool = False
     root_path: str = ""
     proxy_headers: bool = True
-    timeout_keep_alive: int = 60
+    timeout_keep_alive: int = 600
     ssl_certfile: Optional[Path] = None
     ssl_keyfile: Optional[Path] = None
     ssl_keyfile_password: Optional[str] = None

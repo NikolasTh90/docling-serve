@@ -776,7 +776,7 @@ def process_url(
             f"{get_api_endpoint()}/v1alpha/convert/source/async",
             json=parameters,
             verify=ssl_ctx,
-            timeout=60,
+            timeout=600,
         )
     except Exception as e:
         logger.error(f"Error processing URL: {e}")
@@ -866,7 +866,7 @@ def process_file(
             f"{get_api_endpoint()}/v1alpha/convert/source/async",
             json=parameters,
             verify=ssl_ctx,
-            timeout=60,
+            timeout=600,
         )
     except Exception as e:
         logger.error(f"Error processing file(s): {e}")
