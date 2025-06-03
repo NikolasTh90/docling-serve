@@ -67,10 +67,10 @@ services:
       sh -c "
         if [ \"$$DOCLING_DEV_MODE\" = \"true\" ]; then
           echo 'Starting in development mode...';
-          uv run -e ".[ui,tesserocr,cu124]" docling-serve dev --host 0.0.0.0 --port 5001 --enable-ui;
+          uv run --extra ui --extra cu124 docling-serve dev --host 0.0.0.0 --port 5001 --enable-ui;
         else
           echo 'Starting in production mode...';
-          uv run -e ".[ui,tesserocr,cu124]" docling-serve run --host 0.0.0.0 --port 5001 --enable-ui;
+          uv run --extra ui --extra cu124 docling-serve run --host 0.0.0.0 --port 5001 --enable-ui;
         fi
       "
     
