@@ -75,6 +75,6 @@ RUN uv sync --extra ui --extra cu124
 
 # Expose port
 EXPOSE 5001
-
+RUN apt insall unpaper
 # Default command
 CMD ["uv", "run" "--extra","ui", "--extra", "cu124", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
