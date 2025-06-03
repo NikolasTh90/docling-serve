@@ -9,6 +9,7 @@ services:
       args:
         - BUILDKIT_PROGRESS=plain
     container_name: docling-serve-gpu
+    gpus: all
     ports:
       - "5001:5001"
     environment:
