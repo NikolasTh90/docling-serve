@@ -9,21 +9,22 @@ echo "Starting installation of Python 3.11 and dependencies..."
 sudo apt-get update
 
 # Install Python 3.11 from deadsnakes PPA
-echo "Installing Python 3.11..."
-sudo apt-get install -y software-properties-common
-sudo add-apt-repository ppa:deadsnakes/ppa -y
-sudo apt-get update
-sudo apt-get install -y \
-    python3.11 \
-    python3.11-dev \
-    python3.11-venv \
-    python3-pip \
-    python3-setuptools
+# echo "Installing Python 3.11..."
+# sudo apt-get install -y software-properties-common
+# sudo add-apt-repository ppa:deadsnakes/ppa -y
+# sudo apt-get update
+# sudo apt-get install -y \
+#     python3.11 \
+#     python3.11-dev \
+#     python3.11-venv \
+#     python3-pip \
+#     python3-setuptools
 
 # Make python3.11 the default python3
-echo "Setting Python 3.11 as default python3..."
-sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
-
+# echo "Setting Python 3.11 as default python3..."
+# sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+apt-get update
+apt-get install sudo
 # Install system dependencies required for Tesseract build
 echo "Installing system dependencies for Tesseract..."
 sudo apt-get install -y \
