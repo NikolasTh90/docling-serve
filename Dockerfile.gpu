@@ -61,6 +61,8 @@ RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell
 COPY pyproject.toml ./
 COPY README.md ./
 
+RUN apt install -y python3-distutils
+
 # Install UV package manager for faster dependency resolution
 RUN pip install uv
 
