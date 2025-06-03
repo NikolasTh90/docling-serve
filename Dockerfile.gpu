@@ -57,24 +57,24 @@ RUN chmod +x /usr/local/bin/build_tesseract.sh
 # Build and install Tesseract with Arabic and Greek language support
 RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell --jobs 12
 
-# Copy project files
-COPY pyproject.toml ./
-COPY README.md ./
-
 RUN pip install --upgrade setuptools[core]
+RUN pip install uv
+
+
+# Copy application source code
+COPY . /app
+WORKDIR /app
+
 
 # Install UV package manager for faster dependency resolution
-RUN pip install uv
 
 # Install Python dependencies with GPU support (cu124 extra)
 # Install with UI support and tesserocr for better OCR integration
 RUN uv pip install --system -e ".[ui,tesserocr,cu124]"
 
-# Copy application source code
-COPY . /app
+
 # Expose port
 EXPOSE 5001
 
-WORKDIR /app
 # Default command
 CMD ["docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
