@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
     python3.12 \
     python3.12-dev \
     python3.12-venv \
-    python3.12-pip \
-    python3.12-setuptools \
+    python3-pip \
+    python3-setuptools \
     && rm -rf /var/lib/apt/lists/*
 
 # Make python3.12 the default python3
