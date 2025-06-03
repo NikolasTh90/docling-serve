@@ -9,7 +9,10 @@ services:
       args:
         - BUILDKIT_PROGRESS=plain
     container_name: docling-serve-gpu
-    gpus: all
+    device_requests:
+      - driver: nvidia
+        count: all
+        capabilities: [gpu]
     ports:
       - "5001:5001"
     environment:
