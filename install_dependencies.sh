@@ -6,7 +6,7 @@ set -e
 echo "Starting installation of Python 3.11 and dependencies..."
 
 # Update package lists
-sudo apt-get update
+# sudo apt-get update
 
 # Install Python 3.11 from deadsnakes PPA
 # echo "Installing Python 3.11..."
