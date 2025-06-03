@@ -17,7 +17,6 @@ RUN apt-get update && apt-get install -y \
     python3.12-venv \
     python3.12-pip \
     python3.12-setuptools \
-    python3.12-distutils \
     && rm -rf /var/lib/apt/lists/*
 
 # Make python3.12 the default python3
@@ -61,6 +60,8 @@ RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell
 # Copy project files
 COPY pyproject.toml ./
 COPY README.md ./
+
+RUN pip install --upgrade setuptools[core]
 
 # Install UV package manager for faster dependency resolution
 RUN pip install uv
