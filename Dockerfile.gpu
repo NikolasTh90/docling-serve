@@ -73,10 +73,7 @@ RUN uv pip install --system -e ".[ui,tesserocr,cu124]"
 # Copy application source code
 COPY . /app
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash app && \
-    chown -R app:app /app
-USER app
+USER default
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
