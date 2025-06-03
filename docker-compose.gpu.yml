@@ -9,10 +9,6 @@ services:
       args:
         - BUILDKIT_PROGRESS=plain
     container_name: docling-serve-gpu
-    device_requests:
-      - driver: nvidia
-        count: all
-        capabilities: [gpu]
     ports:
       - "5001:5001"
     environment:
@@ -62,7 +58,7 @@ services:
       # GPU-specific settings
       - CUDA_VISIBLE_DEVICES=all
       - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - NVIDIA_DRIVER_CAPABILITIES=gpu,compute,utility
 
     volumes:
       - ./data:/app/data
