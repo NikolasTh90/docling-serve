@@ -7,6 +7,9 @@ services:
     ports:
       - "5001:5001"
     environment:
+      # Development Mode Control
+      - DOCLING_DEV_MODE=${DOCLING_DEV_MODE:-true}
+
       # Arabic Correction Settings
       - DOCLING_ARABIC_ENABLED=false
       - DOCLING_ARABIC_OLLAMA_HOST=http://localhost:11434
@@ -36,10 +39,10 @@ services:
       - DOCLING_OCRMYPDF_PARALLEL_PROCESSING=true
       
       # Uvicorn Settings
-      - UVICORN_RELOAD=false
+      - UVICORN_RELOAD=${DOCLING_DEV_MODE:-false}
       - UVICORN_HOST=0.0.0.0
       - UVICORN_PORT=5001
-      - UVICORN_LOG_LEVEL=info
+      - UVICORN_LOG_LEVEL=${UVICORN_LOG_LEVEL:-info}
       - UVICORN_WORKERS=1
       
       # Docling Serve Settings
@@ -48,12 +51,20 @@ services:
       - DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT=86400
       - DOCLING_SERVE_MAX_SYNC_WAIT=120
     
+    command: >
+      sh -c "
+        if [ \"$$DOCLING_DEV_MODE\" = \"true\" ]; then
+          echo 'Starting in development mode...';
+          docling-serve dev --host 0.0.0.0 --port 5001 --enable-ui;
+        else
+          echo 'Starting in production mode...';
+          docling-serve run --host 0.0.0.0 --port 5001 --enable-ui;
+        fi
+      "
+
     volumes:
-      # Mount for document processing (optional)
       - ./data:/app/data
-      # Mount for tessdata if you want to add more languages later
-      - tessdata:/usr/local/share/tessdata
-    
+      - tessdata:/usr/local/share/tessdata    
     restart: unless-stopped
     
     healthcheck:
@@ -63,7 +74,6 @@ services:
       retries: 3
       start_period: 60s
 
-  # Optional: Include Ollama service for Arabic text correction
   ollama:
     image: ollama/ollama:latest
     container_name: docling-ollama
@@ -73,8 +83,7 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
     profiles:
-      - arabic  # Only start with: docker-compose --profile arabic up
-
+      - arabic
 volumes:
   tessdata:
     driver: local

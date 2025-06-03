@@ -10,6 +10,8 @@ services:
     ports:
       - "5001:5001"
     environment:
+      # Development Mode Control
+      - DOCLING_DEV_MODE=${DOCLING_DEV_MODE:-true}
       # Arabic Correction Settings
       - DOCLING_ARABIC_ENABLED=false
       - DOCLING_ARABIC_OLLAMA_HOST=http://localhost:11434
@@ -57,6 +59,18 @@ services:
     volumes:
       - ./data:/app/data
       - tessdata:/usr/local/share/tessdata
+
+    # Use conditional command based on dev mode
+    command: >
+      sh -c "
+        if [ \"$$DOCLING_DEV_MODE\" = \"true\" ]; then
+          echo 'Starting in development mode...';
+          docling-serve dev --host 0.0.0.0 --port 5001 --enable-ui;
+        else
+          echo 'Starting in production mode...';
+          docling-serve run --host 0.0.0.0 --port 5001 --enable-ui;
+        fi
+      "
     
     deploy:
       resources:
