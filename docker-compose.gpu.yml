@@ -6,6 +6,8 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile.gpu
+      args:
+        - BUILDKIT_PROGRESS=plain
     container_name: docling-serve-gpu
     ports:
       - "5001:5001"
