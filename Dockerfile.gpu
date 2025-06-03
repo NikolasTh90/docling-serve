@@ -77,4 +77,4 @@ RUN uv pip install --system -e ".[ui,tesserocr,cu124]"
 EXPOSE 5001
 
 # Default command
-CMD ["docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
+CMD ["uv", "run" "-e", "'.[ui,tesserocr,cu124]'","docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
