@@ -46,12 +46,12 @@ class OCRMyPDFMiddleware:
         return file_ext in self.settings.supported_extensions
         
     def preprocess_file(
-        self, 
-        file_stream: BytesIO, 
-        filename: str,
-        deskew: Optional[bool] = None,
-        clean: Optional[bool] = None,
-        ocr_languages: Optional[List[str]] = None,
+    self,
+    file_stream: BytesIO,
+    filename: str,
+    deskew: Optional[bool] = None,
+    clean: Optional[bool] = None,
+    ocr_languages: Optional[List[str]] = None,
     ) -> BytesIO:
         """Preprocess PDF file with OCRMyPDF for improved OCR accuracy."""
         if not self.should_preprocess_file(filename):
@@ -77,10 +77,9 @@ class OCRMyPDFMiddleware:
             use_redo_ocr = self.settings.redo_ocr
             
             # Handle OCRMyPDF parameter conflicts
-            # redo_ocr is incompatible with deskew, clean-final, and remove_background
             if use_redo_ocr and (use_deskew or use_clean or use_remove_background):
                 self.logger.warning("redo_ocr conflicts with deskew/clean/remove_background. Prioritizing preprocessing options.")
-                use_redo_ocr = False  # Disable redo_ocr to allow preprocessing
+                use_redo_ocr = False
             
             # Convert language codes to Tesseract format
             tesseract_languages = convert_to_tesseract_codes(ocr_languages, self.logger)
@@ -115,7 +114,7 @@ class OCRMyPDFMiddleware:
                 
                 # Add language specification if provided
                 if tesseract_languages:
-                    ocrmypdf_args['language'] = tesseract_languages  # Pass as list
+                    ocrmypdf_args['language'] = tesseract_languages
                     self.logger.info(f"Using OCRMyPDF with languages: {tesseract_languages}")
                 
                 # Log the final configuration for debugging
@@ -123,19 +122,9 @@ class OCRMyPDFMiddleware:
                                 f"remove_background={use_remove_background}, redo_ocr={use_redo_ocr}, "
                                 f"force_ocr={self.settings.force_ocr}")
                 
-                # Run OCRMyPDF with timeout
-                import signal
-                def timeout_handler(signum, frame):
-                    raise TimeoutError("OCRMyPDF processing timed out")
-                
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(self.settings.timeout)
-                
-                try:
-                    result = ocrmypdf.ocr(**ocrmypdf_args)
-                    self.logger.debug(f"OCRMyPDF result: {result}")
-                finally:
-                    signal.alarm(0)  # Cancel the alarm
+                # Run OCRMyPDF directly without custom timeout
+                result = ocrmypdf.ocr(**ocrmypdf_args)
+                self.logger.debug(f"OCRMyPDF result: {result}")
                 
                 # Read the processed file
                 with open(output_path, 'rb') as f:
