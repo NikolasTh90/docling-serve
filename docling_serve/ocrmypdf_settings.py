@@ -21,7 +21,7 @@ class OCRMyPDFSettings(BaseSettings):
     skip_text: bool = False
     redo_ocr: bool = False  # Changed to False to avoid conflicts with preprocessing options
     progress_bar: bool = False
-    timeout: int = 300  # 5 minutes timeout for OCRMyPDF processing
+    timeout: int = 600  # 5 minutes timeout for OCRMyPDF processing
     
     # Language settings
     default_languages: Optional[List[str]] = None
@@ -37,6 +37,7 @@ class OCRMyPDFSettings(BaseSettings):
     
     # Performance settings
     parallel_processing: bool = True
+    use_threads: bool = None
     max_workers: Optional[int] = None
     
     # Advanced OCRMyPDF options

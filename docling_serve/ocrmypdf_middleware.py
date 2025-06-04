@@ -109,6 +109,8 @@ class OCRMyPDFMiddleware:
                     'skip_text': self.settings.skip_text,
                     'redo_ocr': use_redo_ocr,
                     'progress_bar': self.settings.progress_bar,
+                    'jobs': self.settings.max_workers,
+                    'use_threads': self.settings.use_threads
                 }
                 
                 # Add language specification if provided
