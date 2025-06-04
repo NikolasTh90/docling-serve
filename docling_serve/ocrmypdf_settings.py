@@ -37,7 +37,7 @@ class OCRMyPDFSettings(BaseSettings):
     
     # Performance settings
     parallel_processing: bool = True
-    use_threads: bool = None
+    use_threads: Optional[bool] = None
     max_workers: Optional[int] = None
     
     # Advanced OCRMyPDF options
