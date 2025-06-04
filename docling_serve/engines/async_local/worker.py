@@ -28,6 +28,14 @@ arabic_middleware = ArabicCorrectionMiddleware(
     model_name=arabic_settings.model_name
 )
 
+try:
+    from docling_serve.settings import ocrmypdf_settings
+    from docling_serve.ocrmypdf_middleware import OCRMyPDFMiddleware
+    ocrmypdf_middleware = OCRMyPDFMiddleware(settings=ocrmypdf_settings)
+except ImportError as e:
+    _log.warning(f"OCRMyPDF middleware not available: {e}")
+    ocrmypdf_middleware = None
+
 _log = logging.getLogger(__name__)
 
 
@@ -70,6 +78,46 @@ class AsyncLocalWorker:
                             convert_sources.append(str(source.url))
                             if headers is None and source.headers:
                                 headers = source.headers
+
+
+                    # Add OCRMyPDF preprocessing here - BEFORE convert_documents
+                    enable_ocrmypdf = getattr(task.options, 'enable_ocrmypdf_preprocessing', False)
+                    if enable_ocrmypdf and ocrmypdf_middleware and ocrmypdf_middleware.enabled:
+                        _log.info(f"Applying OCRMyPDF preprocessing for task {task_id}")
+                        
+                        # Process DocumentStream sources for OCRMyPDF
+                        processed_sources = []
+                        for source in convert_sources:
+                            if isinstance(source, DocumentStream):
+                                try:
+                                    # Get OCRMyPDF options from task options
+                                    ocrmypdf_deskew = getattr(task.options, 'ocrmypdf_deskew', True)
+                                    ocrmypdf_clean = getattr(task.options, 'ocrmypdf_clean', True)
+                                    ocr_languages = getattr(task.options, 'ocr_lang', None)
+                                    
+                                    # Apply preprocessing
+                                    processed_stream = ocrmypdf_middleware.preprocess_file(
+                                        source.stream,
+                                        source.name,
+                                        deskew=ocrmypdf_deskew,
+                                        clean=ocrmypdf_clean,
+                                        ocr_languages=ocr_languages
+                                    )
+                                    
+                                    # Reset stream position and create new DocumentStream
+                                    processed_stream.seek(0)
+                                    processed_sources.append(
+                                        DocumentStream(name=source.name, stream=processed_stream)
+                                    )
+                                except Exception as e:
+                                    _log.error(f"OCRMyPDF preprocessing failed for {source.name}: {e}")
+                                    # Use original source if preprocessing fails
+                                    processed_sources.append(source)
+                            else:
+                                # Non-DocumentStream sources (URLs) - keep as is
+                                processed_sources.append(source)
+                        
+                        convert_sources = processed_sources
 
                     # Note: results are only an iterator->lazy evaluation
                     results = convert_documents(

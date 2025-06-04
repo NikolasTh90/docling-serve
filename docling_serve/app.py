@@ -300,84 +300,11 @@ def create_app():  # noqa: C901
             options = getattr(conversion_request, 'options', None) or ConvertDocumentsOptions()
             file_sources = []
 
-        # Apply OCRMyPDF preprocessing if enabled and available for PDF sources
+        # Remove all OCRMyPDF preprocessing logic - it will be handled by the worker
+        # Just log if OCRMyPDF is requested
         enable_ocrmypdf = getattr(options, 'enable_ocrmypdf_preprocessing', False)
-        if enable_ocrmypdf and ocrmypdf_middleware and ocrmypdf_middleware.enabled:
-            _log.info("OCRMyPDF preprocessing requested for source conversion")
-            
-            # Download and preprocess PDF files
-            processed_sources = []
-            for source in file_sources:
-                try:
-                    # Handle HTTP sources (URLs)
-                    if hasattr(source, 'url') and source.url.lower().endswith('.pdf'):
-                        _log.info(f"Downloading and preprocessing PDF from URL: {source.url}")
-                        
-                        # Download the file
-                        import httpx
-                        async with httpx.AsyncClient() as client:
-                            response = await client.get(source.url)
-                            response.raise_for_status()
-                            
-                        # Convert to DocumentStream for preprocessing
-                        file_stream = BytesIO(response.content)
-                        filename = source.url.split('/')[-1] or 'downloaded.pdf'
-                        
-                        # Apply OCRMyPDF preprocessing
-                        ocrmypdf_deskew = getattr(options, 'ocrmypdf_deskew', True)
-                        ocrmypdf_clean = getattr(options, 'ocrmypdf_clean', True)
-                        ocr_languages = getattr(options, 'ocr_lang', None)
-                        
-                        processed_stream = ocrmypdf_middleware.preprocess_file(
-                            file_stream,
-                            filename,
-                            deskew=ocrmypdf_deskew,
-                            clean=ocrmypdf_clean,
-                            ocr_languages=ocr_languages
-                        )
-                        
-                        # Convert back to DocumentStream
-                        processed_stream.seek(0)
-                        processed_source = DocumentStream(name=filename, stream=processed_stream)
-                        processed_sources.append(processed_source)
-                        
-                    # Handle base64 file sources
-                    elif hasattr(source, 'filename') and source.filename.lower().endswith('.pdf'):
-                        _log.info(f"Preprocessing base64 PDF file: {source.filename}")
-                        
-                        # Decode base64 content
-                        import base64
-                        file_content = base64.b64decode(source.base64_string)
-                        file_stream = BytesIO(file_content)
-                        
-                        # Apply OCRMyPDF preprocessing
-                        ocrmypdf_deskew = getattr(options, 'ocrmypdf_deskew', True)
-                        ocrmypdf_clean = getattr(options, 'ocrmypdf_clean', True)
-                        ocr_languages = getattr(options, 'ocr_lang', None)
-                        
-                        processed_stream = ocrmypdf_middleware.preprocess_file(
-                            file_stream,
-                            source.filename,
-                            deskew=ocrmypdf_deskew,
-                            clean=ocrmypdf_clean,
-                            ocr_languages=ocr_languages
-                        )
-                        
-                        # Convert back to DocumentStream
-                        processed_stream.seek(0)
-                        processed_source = DocumentStream(name=source.filename, stream=processed_stream)
-                        processed_sources.append(processed_source)
-                        
-                    else:
-                        # Non-PDF sources - keep as is
-                        processed_sources.append(source)
-                        
-                except Exception as e:
-                    _log.error(f"Failed to preprocess source: {e}")
-                    # Use original source if preprocessing fails
-                    processed_sources.append(source)
-            
-            file_sources = processed_sources
+        if enable_ocrmypdf:
+            _log.info("OCRMyPDF preprocessing will be applied by background worker")
         elif enable_ocrmypdf:
             _log.warning("OCRMyPDF preprocessing requested but middleware not available")
 
@@ -399,23 +326,11 @@ def create_app():  # noqa: C901
             name = file.filename if file.filename else f"file{suffix}.pdf"
             file_sources.append(DocumentStream(name=name, stream=buf))
 
-        # Apply OCRMyPDF preprocessing if enabled and available
+        # Remove all OCRMyPDF preprocessing logic - it will be handled by the worker
+        # Just log if OCRMyPDF is requested
         enable_ocrmypdf = getattr(options, 'enable_ocrmypdf_preprocessing', False)
-        if enable_ocrmypdf and ocrmypdf_middleware and ocrmypdf_middleware.enabled:
-            _log.info("Applying OCRMyPDF preprocessing to uploaded files")
-            ocrmypdf_deskew = getattr(options, 'ocrmypdf_deskew', True)
-            ocrmypdf_clean = getattr(options, 'ocrmypdf_clean', True)
-            ocr_languages = getattr(options, 'ocr_lang', None)
-            
-            file_sources = ocrmypdf_middleware.preprocess_document_streams(
-                file_sources,
-                enable_preprocessing=True,
-                deskew=ocrmypdf_deskew,
-                clean=ocrmypdf_clean,
-                ocr_languages=ocr_languages
-            )
-        elif enable_ocrmypdf:
-            _log.warning("OCRMyPDF preprocessing requested but middleware not available")
+        if enable_ocrmypdf:
+            _log.info("OCRMyPDF preprocessing will be applied by background worker")
 
         task = await orchestrator.enqueue(sources=file_sources, options=options)
         return task
