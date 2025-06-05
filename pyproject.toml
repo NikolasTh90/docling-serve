@@ -44,6 +44,9 @@ dependencies = [
     "websockets~=14.0",
     "langdetect>=1.0.9",
     "ollama>=0.4.8",
+    "huggingface_hub>=0.16.4",
+    "transformers",
+
 ]
 
 [project.optional-dependencies]
