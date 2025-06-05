@@ -55,7 +55,7 @@ COPY build_tesseract.sh /usr/local/bin/build_tesseract.sh
 RUN chmod +x /usr/local/bin/build_tesseract.sh
 
 # Build and install Tesseract with Arabic and Greek language support
-RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell --jobs 12
+RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell --jobs 32
 
 RUN pip install --upgrade setuptools[core]
 RUN pip install uv
@@ -77,4 +77,4 @@ RUN uv sync --extra ui --extra cu124
 EXPOSE 5001
 RUN apt install -y unpaper ghostscript
 # Default command
-CMD ["uv", "run" "--extra","ui", "--extra", "cu124", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
+# CMD ["uv", "run" "--extra","ui", "--extra", "cu124", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
