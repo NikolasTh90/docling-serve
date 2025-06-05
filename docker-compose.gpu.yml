@@ -5,10 +5,10 @@ services:
   docling-serve-gpu:
     build:
       context: .
-      dockerfile: Dockerfile.runpod
+      dockerfile: Dockerfile.gpu
       args:
         - BUILDKIT_PROGRESS=plain
-    image: quay.io/nikolas/docling-serve:runpod
+    image: quay.io/nikolas/docling-serve:gpu
     container_name: docling-serve-gpu
     ports:
       - "5001:5001"
