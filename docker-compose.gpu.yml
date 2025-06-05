@@ -5,61 +5,13 @@ services:
   docling-serve-gpu:
     build:
       context: .
-      dockerfile: Dockerfile.gpu
+      dockerfile: Dockerfile.runpod
       args:
         - BUILDKIT_PROGRESS=plain
+    image: quay.io/docling/docling-serve:runpod
     container_name: docling-serve-gpu
     ports:
       - "5001:5001"
-    environment:
-      # Development Mode Control
-      - DOCLING_DEV_MODE=${DOCLING_DEV_MODE:-true}
-      # Arabic Correction Settings
-      - DOCLING_ARABIC_ENABLED=false
-      - DOCLING_ARABIC_OLLAMA_HOST=http://localhost:11434
-      - DOCLING_ARABIC_MODEL_NAME=command-r7b-arabic:latest
-      - DOCLING_ARABIC_TIMEOUT=30
-      - DOCLING_ARABIC_ENABLE_REMOTE_SERVICES=false
-      
-      # OCRMyPDF Preprocessing Settings
-      - DOCLING_OCRMYPDF_ENABLED=true
-      - DOCLING_OCRMYPDF_DESKEW=true
-      - DOCLING_OCRMYPDF_CLEAN=true
-      - DOCLING_OCRMYPDF_OPTIMIZE=1
-      - DOCLING_OCRMYPDF_COLOR_CONVERSION_STRATEGY=RGB
-      - DOCLING_OCRMYPDF_OVERSAMPLE=300
-      - DOCLING_OCRMYPDF_REMOVE_BACKGROUND=false
-      - DOCLING_OCRMYPDF_THRESHOLD=false
-      - DOCLING_OCRMYPDF_FORCE_OCR=true
-      - DOCLING_OCRMYPDF_SKIP_TEXT=false
-      - DOCLING_OCRMYPDF_REDO_OCR=false
-      - DOCLING_OCRMYPDF_PROGRESS_BAR=true
-      - DOCLING_OCRMYPDF_QUIET=false
-      - DOCLING_OCRMYPDF_TIMEOUT=300
-      - DOCLING_OCRMYPDF_LANGUAGE_DETECTION=true
-      - DOCLING_OCRMYPDF_MAX_FILE_SIZE_MB=100
-      - DOCLING_OCRMYPDF_FAIL_ON_ERROR=false
-      - DOCLING_OCRMYPDF_FALLBACK_ON_FAILURE=true
-      - DOCLING_OCRMYPDF_PARALLEL_PROCESSING=true
-      
-      # Uvicorn Settings
-      - UVICORN_RELOAD=false
-      - UVICORN_HOST=0.0.0.0
-      - UVICORN_PORT=5001
-      - UVICORN_LOG_LEVEL=info
-      - UVICORN_WORKERS=1
-      
-      # Docling Serve Settings
-      - DOCLING_SERVE_ENABLE_UI=true
-      - DOCLING_SERVE_API_HOST=0.0.0.0
-      - DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT=86400
-      - DOCLING_SERVE_MAX_SYNC_WAIT=120
-      
-      # GPU-specific settings
-      - CUDA_VISIBLE_DEVICES=all
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=gpu,compute,utility
-
     volumes:
       - ./data:/app/data
       - tessdata:/usr/local/share/tessdata
