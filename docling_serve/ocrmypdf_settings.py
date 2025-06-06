@@ -14,7 +14,7 @@ class OCRMyPDFSettings(BaseSettings):
     deskew: bool = True
     clean: bool = True
     optimize: int = 1
-    color_conversion_strategy: str = "RGB"
+    color_conversion_strategy: Optional[str] = None
     oversample: int = 300
     remove_background: bool = False # Changed to False because it is not yet implemented
     force_ocr: bool = True
@@ -43,3 +43,5 @@ class OCRMyPDFSettings(BaseSettings):
     # Advanced OCRMyPDF options
     tesseract_timeout: Optional[float] = None
     clean_final: bool = False  # This can also conflict with redo_ocr
+
+    pdf_renderer: Optional[str] = None

@@ -7,6 +7,8 @@ import ocrmypdf
 from docling.datamodel.base_models import DocumentStream
 
 from .ocr_language_utils import convert_to_tesseract_codes, format_for_ocrmypdf
+from .pdf_analysis import analyze_pdf, check_pdf_is_tagged
+
 # Import settings with proper fallback
 try:
     from .settings import ocrmypdf_settings
@@ -52,6 +54,7 @@ class OCRMyPDFMiddleware:
     deskew: Optional[bool] = None,
     clean: Optional[bool] = None,
     ocr_languages: Optional[List[str]] = None,
+    ocr_mode: Optional[str] = None,  # New parameter to override auto-detection
     ) -> BytesIO:
         """Preprocess PDF file with OCRMyPDF for improved OCR accuracy."""
         if not self.should_preprocess_file(filename):
@@ -74,15 +77,6 @@ class OCRMyPDFMiddleware:
             use_deskew = deskew if deskew is not None else self.settings.deskew
             use_clean = clean if clean is not None else self.settings.clean
             use_remove_background = self.settings.remove_background
-            use_redo_ocr = self.settings.redo_ocr
-            
-            # Handle OCRMyPDF parameter conflicts
-            if use_redo_ocr and (use_deskew or use_clean or use_remove_background):
-                self.logger.warning("redo_ocr conflicts with deskew/clean/remove_background. Prioritizing preprocessing options.")
-                use_redo_ocr = False
-            
-            # Convert language codes to Tesseract format
-            tesseract_languages = convert_to_tesseract_codes(ocr_languages, self.logger)
             
             # Create temporary files
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as input_temp:
@@ -94,6 +88,36 @@ class OCRMyPDFMiddleware:
                 output_path = Path(output_temp.name)
                 
             try:
+                # Determine OCR mode if not specified
+                if ocr_mode is None:
+                    # Analyze PDF to determine best OCR approach
+                    analysis = analyze_pdf(input_path)
+                    
+                    # If analysis suggests skipping OCR, return original file
+                    if analysis['recommended_mode'] == 'skip':
+                        self.logger.info(f"Analysis suggests skipping OCR for {filename}")
+                        return file_stream
+                    
+                    ocr_mode = analysis['recommended_mode']
+                
+                self.logger.info(f"Using OCR mode: {ocr_mode} for {filename}")
+                
+                # Set OCR parameters based on mode
+                use_force_ocr = ocr_mode == 'force'
+                use_redo_ocr = ocr_mode == 'redo'
+                
+                # Handle OCRMyPDF parameter conflicts
+                if use_redo_ocr and (use_deskew or use_clean or use_remove_background):
+                    self.logger.warning("redo_ocr conflicts with deskew/clean/remove_background. Prioritizing preprocessing options.")
+                    use_redo_ocr = False
+                    # If we were going to use redo-ocr but can't due to preprocessing options,
+                    # switch to force-ocr
+                    if ocr_mode == 'redo':
+                        use_force_ocr = True
+                
+                # Convert language codes to Tesseract format
+                tesseract_languages = convert_to_tesseract_codes(ocr_languages, self.logger)
+                
                 # Configure OCRMyPDF using settings with valid parameters only
                 ocrmypdf_args = {
                     'input_file': input_path,
@@ -104,12 +128,13 @@ class OCRMyPDFMiddleware:
                     'color_conversion_strategy': self.settings.color_conversion_strategy,
                     'oversample': self.settings.oversample,
                     'remove_background': use_remove_background,
-                    'force_ocr': self.settings.force_ocr,
+                    'force_ocr': use_force_ocr,
                     'skip_text': self.settings.skip_text,
                     'redo_ocr': use_redo_ocr,
                     'progress_bar': self.settings.progress_bar,
                     'jobs': self.settings.max_workers,
-                    'use_threads': self.settings.use_threads
+                    'use_threads': self.settings.use_threads,
+                    'pdf_renderer': self.settings.pdf_renderer
                 }
                 
                 # Add language specification if provided
@@ -118,9 +143,9 @@ class OCRMyPDFMiddleware:
                     self.logger.info(f"Using OCRMyPDF with languages: {tesseract_languages}")
                 
                 # Log the final configuration for debugging
-                self.logger.debug(f"OCRMyPDF config: deskew={use_deskew}, clean={use_clean}, "
+                self.logger.debug(f"OCRMyPDF config: mode={ocr_mode}, deskew={use_deskew}, clean={use_clean}, "
                                 f"remove_background={use_remove_background}, redo_ocr={use_redo_ocr}, "
-                                f"force_ocr={self.settings.force_ocr}")
+                                f"force_ocr={use_force_ocr}")
                 
                 # Run OCRMyPDF directly without custom timeout
                 result = ocrmypdf.ocr(**ocrmypdf_args)
@@ -156,6 +181,7 @@ class OCRMyPDFMiddleware:
         deskew: Optional[bool] = None,
         clean: Optional[bool] = None,
         ocr_languages: Optional[List[str]] = None,
+        ocr_mode: Optional[str] = None,
     ) -> List[DocumentStream]:
         """Preprocess multiple DocumentStream objects."""
         if not enable_preprocessing or not self.enabled or not self.settings:
@@ -169,7 +195,8 @@ class OCRMyPDFMiddleware:
                     source.name,
                     deskew=deskew,
                     clean=clean,
-                    ocr_languages=ocr_languages
+                    ocr_languages=ocr_languages,
+                    ocr_mode=ocr_mode
                 )
                 # Reset stream position
                 processed_stream.seek(0)
