@@ -46,6 +46,8 @@ dependencies = [
     "ollama>=0.4.8",
     "huggingface_hub>=0.16.4",
     "transformers",
+    "pikepdf>=8.0.0",
+    "pdfplumber>=0.10.0",
 
 ]
 
