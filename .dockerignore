@@ -8,6 +8,13 @@ __pycache__/
 # Ignore virtual environments
 env/
 venv/
+.venv/
+*.venv/
+**.venv
+**/.venv
+**/env
+**/venv
+**/.venv
 
 # Ignore development artifacts
 *.log
@@ -15,8 +22,8 @@ venv/
 *.sqlite3
 
 # Ignore configuration and sensitive files
-**/.env
-*.env
+# **/.env
+# *.env
 *.ini
 *.cfg
 
