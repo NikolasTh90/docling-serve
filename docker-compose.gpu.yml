@@ -15,7 +15,7 @@ services:
     volumes:
       - ./data:/app/data
       - tessdata:/usr/local/share/tessdata
-      - .:/app
+      # - .:/app
 
     # Use conditional command based on dev mode
     command: >
