@@ -45,7 +45,19 @@ RUN apt-get update && apt-get install -y \
     sudo \
     unpaper \
     ghostscript \
+    pngquant \
     && rm -rf /var/lib/apt/lists/*
+
+# Install jbig2 encoder
+RUN git clone https://github.com/agl/jbig2enc.git \
+    && cd jbig2enc \
+    && ./autogen.sh \
+    && ./configure \
+    && make -j12 \
+    && make install \
+    && cd .. \
+    && rm -rf jbig2enc
+
 
 # Copy build script and make it executable
 COPY build_tesseract.sh /usr/local/bin/build_tesseract.sh
@@ -65,6 +77,9 @@ RUN uv sync --extra ui --extra cu124
 
 # Now copy the rest of the application code
 COPY . /app
+
+# Set Tesseract data path
+ENV TESSDATA_PREFIX="/usr/local/share/tessdata/"
 
 # # Expose port
 EXPOSE 5001
