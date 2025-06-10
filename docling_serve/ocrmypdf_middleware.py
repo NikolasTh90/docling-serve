@@ -134,9 +134,10 @@ class OCRMyPDFMiddleware:
                     'progress_bar': self.settings.progress_bar,
                     'jobs': self.settings.max_workers,
                     'use_threads': self.settings.use_threads,
-                    'pdf_renderer': self.settings.pdf_renderer
+                    'pdf_renderer': self.settings.pdf_renderer,
+                    'output_type': self.settings.output_type
                 }
-                
+
                 # Add language specification if provided
                 if tesseract_languages:
                     ocrmypdf_args['language'] = tesseract_languages

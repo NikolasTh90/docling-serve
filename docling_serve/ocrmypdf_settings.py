@@ -14,6 +14,7 @@ class OCRMyPDFSettings(BaseSettings):
     deskew: bool = True
     clean: bool = True
     optimize: int = 1
+    output_type: Optional[str] = None  # pdf, pdfa, pdfa-1, pdfa-2, pdfa-3
     color_conversion_strategy: Optional[str] = None
     oversample: int = 300
     remove_background: bool = False # Changed to False because it is not yet implemented
