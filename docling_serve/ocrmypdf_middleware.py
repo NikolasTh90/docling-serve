@@ -124,6 +124,7 @@ class OCRMyPDFMiddleware:
                     'output_file': output_path,
                     'deskew': use_deskew,
                     'clean': use_clean,
+                    'clean_final': self.settings.clean_final,
                     'optimize': self.settings.optimize,
                     'color_conversion_strategy': self.settings.color_conversion_strategy,
                     'oversample': self.settings.oversample,
