@@ -30,13 +30,43 @@ class OCRMyPDFMiddleware:
         self.enabled = self.settings.enabled if self.settings else False
         self.logger = logging.getLogger(__name__)
         
+        # Configure OCRMyPDF logging if enabled
+        if self.enabled and self.settings:
+            self._configure_ocrmypdf_logging()
+        
         # Log configuration on initialization
         if self.settings:
             self.logger.info(f"OCRMyPDF Middleware initialized - Enabled: {self.enabled}")
             if self.enabled:
                 self.logger.debug(f"OCRMyPDF Settings - Deskew: {self.settings.deskew}, Clean: {self.settings.clean}")
+                self.logger.debug(f"OCRMyPDF Verbosity: {self.settings.verbosity}")
         else:
             self.logger.warning("OCRMyPDF settings not available - middleware disabled")
+    
+    def _configure_ocrmypdf_logging(self):
+        """Configure OCRMyPDF logging based on verbosity settings."""
+        try:
+            # Map integer verbosity to OCRMyPDF Verbosity enum
+            verbosity_map = {
+                -1: ocrmypdf.Verbosity.quiet,
+                0: ocrmypdf.Verbosity.default,
+                1: ocrmypdf.Verbosity.debug,
+                2: ocrmypdf.Verbosity.debug_all
+            }
+            
+            verbosity_level = verbosity_map.get(self.settings.verbosity, ocrmypdf.Verbosity.default)
+            
+            # Configure OCRMyPDF logging
+            ocrmypdf.configure_logging(
+                verbosity=verbosity_level,
+                progress_bar_friendly=self.settings.progress_bar_friendly,
+                manage_root_logger=self.settings.manage_root_logger
+            )
+            
+            self.logger.debug(f"OCRMyPDF logging configured with verbosity: {verbosity_level}")
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to configure OCRMyPDF logging: {e}")
         
     def should_preprocess_file(self, filename: str) -> bool:
         """Check if file should be preprocessed with OCRMyPDF."""

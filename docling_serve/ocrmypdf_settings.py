@@ -44,5 +44,9 @@ class OCRMyPDFSettings(BaseSettings):
     # Advanced OCRMyPDF options
     tesseract_timeout: Optional[float] = None
     clean_final: bool = False  # This can also conflict with redo_ocr
-
     pdf_renderer: Optional[str] = None
+    
+    # Logging settings
+    verbosity: int = 0  # 0=default, 1=debug, 2=debug_all, -1=quiet
+    progress_bar_friendly: bool = True
+    manage_root_logger: bool = False
