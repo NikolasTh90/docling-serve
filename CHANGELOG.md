@@ -1,3 +1,23 @@
+## [v0.13.0](https://github.com/docling-project/docling-serve/releases/tag/v0.13.0) - 2025-06-04
+
+### Feature
+
+* Upgrade docling to 2.36 ([#212](https://github.com/docling-project/docling-serve/issues/212)) ([`ffea347`](https://github.com/docling-project/docling-serve/commit/ffea34732b24fdd438fabd6df02d3d9ce66b4534))
+
+## [v0.12.0](https://github.com/docling-project/docling-serve/releases/tag/v0.12.0) - 2025-06-03
+
+### Feature
+
+* Export annotations in markdown and html (Docling upgrade) ([#202](https://github.com/docling-project/docling-serve/issues/202)) ([`c4c41f1`](https://github.com/docling-project/docling-serve/commit/c4c41f16dff83c5d2a0b8a4c625b5de19b36b7c5))
+
+### Fix
+
+* Processing complex params in multipart-form ([#210](https://github.com/docling-project/docling-serve/issues/210)) ([`7066f35`](https://github.com/docling-project/docling-serve/commit/7066f3520a88c07df1c80a0cc6c4339eaac4d6a7))
+
+### Documentation
+
+* Add openshift replicasets examples ([#209](https://github.com/docling-project/docling-serve/issues/209)) ([`6a8190c`](https://github.com/docling-project/docling-serve/commit/6a8190c315792bd1e0e2b0af310656baaa5551e5))
+
 ## [v0.11.0](https://github.com/docling-project/docling-serve/releases/tag/v0.11.0) - 2025-05-23
 
 ### Feature
