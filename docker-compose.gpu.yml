@@ -14,7 +14,7 @@ services:
       - "5001:5001"
     volumes:
       - ./data:/app/data
-      - tessdata:/usr/local/share/tessdata
+      # - tessdata:/usr/local/share/tessdata
       # - .:/app
 
     # Use conditional command based on dev mode
