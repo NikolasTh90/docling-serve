@@ -7,7 +7,6 @@ import ocrmypdf
 from docling.datamodel.base_models import DocumentStream
 
 from .ocr_language_utils import convert_to_tesseract_codes, format_for_ocrmypdf
-from .pdf_analysis import analyze_pdf, check_pdf_is_tagged
 
 # Import settings with proper fallback
 try:
@@ -78,13 +77,13 @@ class OCRMyPDFMiddleware:
         return file_ext in self.settings.supported_extensions
         
     def preprocess_file(
-    self,
-    file_stream: BytesIO,
-    filename: str,
-    deskew: Optional[bool] = None,
-    clean: Optional[bool] = None,
-    ocr_languages: Optional[List[str]] = None,
-    ocr_mode: Optional[str] = None,  # New parameter to override auto-detection
+        self,
+        file_stream: BytesIO,
+        filename: str,
+        deskew: Optional[bool] = None,
+        clean: Optional[bool] = None,
+        ocr_languages: Optional[List[str]] = None,
+        ocr_mode: Optional[str] = None,  # New parameter to override auto-detection
     ) -> BytesIO:
         """Preprocess PDF file with OCRMyPDF for improved OCR accuracy."""
         if not self.should_preprocess_file(filename):
@@ -118,20 +117,13 @@ class OCRMyPDFMiddleware:
                 output_path = Path(output_temp.name)
                 
             try:
-                # Determine OCR mode if not specified
+                # Use the provided OCR mode from PDF analysis, or default to 'force'
                 if ocr_mode is None:
-                    # Analyze PDF to determine best OCR approach
-                    analysis = analyze_pdf(input_path)
-                    
-                    # If analysis suggests skipping OCR, return original file
-                    if analysis['recommended_mode'] == 'skip':
-                        self.logger.info(f"Analysis suggests skipping OCR for {filename}")
-                        return file_stream
-                    
-                    ocr_mode = analysis['recommended_mode']
-                
-                self.logger.info(f"Using OCR mode: {ocr_mode} for {filename}")
-                
+                    ocr_mode = 'force'  # Keep this as fallback
+                    self.logger.info(f"No OCR mode specified, defaulting to 'force' for {filename}")
+                else:
+                    self.logger.info(f"Using recommended OCR mode: {ocr_mode} for {filename}")
+
                 # Set OCR parameters based on mode
                 use_force_ocr = ocr_mode == 'force'
                 use_redo_ocr = ocr_mode == 'redo'
@@ -194,10 +186,9 @@ class OCRMyPDFMiddleware:
                 # Cleanup temporary files
                 input_path.unlink(missing_ok=True)
                 output_path.unlink(missing_ok=True)
-                
         except Exception as e:
             self.logger.error(f"OCRMyPDF preprocessing failed for {filename}: {e}")
-            
+                
             if self.settings.fail_on_error:
                 raise
             elif self.settings.fallback_on_failure:

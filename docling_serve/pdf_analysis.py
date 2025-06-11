@@ -1,3 +1,4 @@
+from io import BytesIO
 import logging
 import re
 from pathlib import Path
@@ -165,3 +166,52 @@ def check_pdf_is_tagged(pdf_path: Path) -> bool:
     except (ImportError, Exception):
         pass
     return False
+
+
+def analyze_pdf_for_force_ocr(file_stream: BytesIO, filename: str) -> bool:
+    """
+    Analyze PDF to determine if force_ocr should be enabled for docling.
+    
+    Args:
+        file_stream: PDF file content as BytesIO
+        filename: Original filename for logging
+        
+    Returns:
+        bool: True if force_ocr should be enabled, False otherwise
+    """
+    logger.info(f"Analyzing PDF {filename} to determine force_ocr setting")
+    
+    try:
+        # Create temporary file for analysis
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+            temp_file.write(file_stream.getvalue())
+            temp_file.flush()
+            temp_path = Path(temp_file.name)
+            
+        try:
+            # Analyze the PDF
+            analysis = analyze_pdf(temp_path)
+            
+            # Determine force_ocr based on analysis
+            if analysis['recommended_mode'] == 'force':
+                logger.info(f"PDF analysis recommends force_ocr=True for {filename}")
+                return True
+            elif analysis['text_quality'] == 'poor':
+                logger.info(f"Poor text quality detected, setting force_ocr=True for {filename}")
+                return True
+            else:
+                logger.info(f"PDF analysis recommends keeping force_ocr=False for {filename}")
+                return False
+                
+        finally:
+            temp_path.unlink(missing_ok=True)
+            
+    except Exception as e:
+        logger.warning(f"Failed to analyze PDF {filename}: {e}")
+        # Default to not forcing OCR on analysis failure
+        return False
+
+def should_analyze_file_for_force_ocr(filename: str) -> bool:
+    """Check if file should be analyzed for force_ocr determination."""
+    file_ext = Path(filename).suffix.lower()
+    return file_ext == '.pdf'

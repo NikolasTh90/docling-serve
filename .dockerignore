@@ -34,12 +34,12 @@ venv/
 *.swo
 
 # Ignore Git files
-.git/
-.gitignore
+# .git/
+# .gitignore
 
 # Ignore Docker files themselves (optional if not needed in the image)
-.dockerignore
-Dockerfile*
+# .dockerignore
+# Dockerfile*
 
 # Ignore build artifacts (if applicable)
 build/
