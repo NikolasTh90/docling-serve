@@ -39,11 +39,17 @@ except ImportError:
     # Fallback if Arabic settings not available
     arabic_settings = None
 
+# ADD THESE IMPORTS for AI Vision settings
+try:
+    from docling_serve.ai_vision_settings import AIVisionSettings
+    ai_vision_settings = AIVisionSettings()
+except ImportError:
+    # Fallback if AI Vision settings not available
+    ai_vision_settings = None
+
 from docling_serve.config import get_ocrmypdf_config
-
-
 logger = logging.getLogger(__name__)
-
+        
 ############################
 # Path of static artifacts #
 ############################
@@ -126,8 +132,8 @@ theme = gr.themes.Default(
         "ui-monospace",
         "Consolas",
         "monospace",
-    ],
-)
+                    ],
+                )
 
 #############
 # Variables #
@@ -223,6 +229,21 @@ def get_arabic_correction_config():
             "model": os.getenv("DOCLING_ARABIC_MODEL_NAME", "command-r7b-arabic"),
         }
     
+def get_ai_vision_config():
+    """Get AI Vision configuration for display."""
+    if ai_vision_settings:
+        return {
+            "enabled": ai_vision_settings.enabled,
+            "host": ai_vision_settings.ollama_host,
+            "model": ai_vision_settings.model_name,
+        }
+    else:
+        return {
+            "enabled": os.getenv("DOCLING_AI_VISION_ENABLED", "false").lower() == "true",
+            "host": os.getenv("DOCLING_AI_VISION_OLLAMA_HOST", "http://localhost:11434"),
+            "model": os.getenv("DOCLING_AI_VISION_MODEL_NAME", "qwen2.5-vl:32b"),
+        }
+
 def validate_arabic_correction_environment():
     """Validate Arabic correction environment configuration."""
     logger.debug("→ Enter validate_arabic_correction_environment")
@@ -337,6 +358,65 @@ def validate_arabic_correction_environment():
 
     return {"issues": issues, "warnings": warnings, "status": status}
 
+def validate_ai_vision_environment():
+    """Validate AI Vision environment configuration."""
+    validation_result = {
+        "status": "unknown",
+        "issues": [],
+        "warnings": [],
+        "info": []
+    }
+    
+    config = get_ai_vision_config()
+
+    if not config["enabled"]:
+        validation_result["status"] = "disabled"
+        validation_result["info"].append("AI Vision is disabled in configuration")
+        return validation_result
+
+    # Check required packages
+    try:
+        import pdf2image
+        import PIL
+        import ollama
+        validation_result["info"].append("Required packages are available")
+    except ImportError as e:
+        missing = str(e).split("'")[1] if "'" in str(e) else "unknown package"
+        validation_result["issues"].append(f"Missing required package: {missing}")
+        validation_result["status"] = "error"
+        return validation_result
+
+    # Check Ollama connectivity and model availability
+    try:
+        import requests
+        health_url = f"{config['host']}/api/tags"
+        resp = requests.get(health_url, timeout=10)
+
+        if resp.status_code != 200:
+            validation_result["issues"].append(f"Ollama service at {config['host']} returned {resp.status_code}")
+            validation_result["status"] = "error"
+        else:
+            try:
+                        client = ollama.Client(host=config["host"])
+                        models = client.list()
+                        available_models = [model['name'] for model in models.get('models', [])]
+
+                        if config["model"] in available_models:
+                            validation_result["status"] = "healthy"
+                            validation_result["info"].append(f"Vision model '{config['model']}' is available")
+                        else:
+                            validation_result["issues"].append(f"Vision model '{config['model']}' not found in Ollama")
+                            validation_result["status"] = "error"
+            except Exception as e:
+                        validation_result["issues"].append(f"Failed to check models: {str(e)[:100]}")
+                        validation_result["status"] = "error"
+
+    except Exception as e:
+        validation_result["issues"].append(f"Failed to connect to Ollama: {str(e)[:100]}")
+        validation_result["status"] = "error"
+
+    return validation_result
+
 def get_arabic_correction_status_with_validation():
     """Get Arabic correction status with detailed validation."""
     validation_result = validate_arabic_correction_environment()
@@ -355,6 +435,25 @@ def get_arabic_correction_status_with_validation():
     
     else:
         return f"<small style='color: green;'>✓ Arabic correction: Ready ({config['model']})</small>"
+
+def get_ai_vision_status_with_validation():
+    """Get AI Vision status with detailed validation."""
+    validation_result = validate_ai_vision_environment()
+    config = get_ai_vision_config()
+
+    if validation_result["status"] == "disabled":
+        return "<small style='color: gray;'>⚪ AI Vision: Disabled in configuration</small>"
+
+    elif validation_result["status"] == "error":
+        error_details = "; ".join(validation_result["issues"][:2])
+        return f"<small style='color: red;'>✗ AI Vision: {error_details}</small>"
+
+    elif validation_result["status"] == "warning":
+        warning_details = "; ".join(validation_result["warnings"][:1])
+        return f"<small style='color: orange;'>⚠ AI Vision: {warning_details}</small>"
+
+    else:
+        return f"<small style='color: green;'>✓ AI Vision: Ready ({config['model']})</small>"
 
 def get_detailed_arabic_correction_info():
     """Get detailed Arabic correction information for the UI."""
@@ -394,6 +493,44 @@ def get_detailed_arabic_correction_info():
     
     return info_html
 
+def get_detailed_ai_vision_info():
+    """Get detailed AI Vision information for the UI."""
+    validation_result = validate_ai_vision_environment()
+    config = get_ai_vision_config()
+
+    info_html = f"""
+    <div style='font-size: 12px; margin-top: 10px;'>
+    <strong>AI Vision OCR Status:</strong><br>
+    <strong>Host:</strong> {config['host']}<br>
+    <strong>Model:</strong> {config['model']}<br>
+    <strong>Enabled:</strong> {config['enabled']}<br>
+    """
+
+    if validation_result["issues"]:
+        info_html += "<br><strong style='color: red;'>Issues:</strong><br>"
+        for issue in validation_result["issues"]:
+            info_html += f"• {issue}<br>"
+
+    if validation_result["warnings"]:
+        info_html += "<br><strong style='color: orange;'>Warnings:</strong><br>"
+        for warning in validation_result["warnings"]:
+            info_html += f"• {warning}<br>"
+
+    if validation_result["status"] == "healthy":
+        info_html += "<br><strong style='color: green;'>✓ All checks passed</strong><br>"
+
+    # Add configuration help
+    info_html += """
+    <br><strong>Configuration:</strong><br>
+    Set these environment variables:<br>
+    • <code>DOCLING_AI_VISION_ENABLED=true</code><br>
+    • <code>DOCLING_AI_VISION_OLLAMA_HOST=http://localhost:11434</code><br>
+    • <code>DOCLING_AI_VISION_MODEL_NAME=qwen2.5-vl:32b</code><br>
+    </div>
+    """
+
+    return info_html
+
 def test_arabic_correction_connection():
     """Test Arabic correction connection and return user-friendly message."""
     try:
@@ -412,6 +549,25 @@ def test_arabic_correction_connection():
             
     except Exception as e:
         return f"❌ Error testing Arabic correction: {str(e)}"
+
+def test_ai_vision_connection():
+    """Test AI Vision connection and return user-friendly message."""
+    try:
+        validation_result = validate_ai_vision_environment()
+
+        if validation_result["status"] == "healthy":
+            return "✅ AI Vision is working properly!"
+        elif validation_result["status"] == "disabled":
+            return "ℹ️ AI Vision is disabled in configuration"
+        elif validation_result["status"] == "warning":
+            warnings = "; ".join(validation_result["warnings"])
+            return f"⚠️ AI Vision has warnings: {warnings}"
+        else:
+            issues = "; ".join(validation_result["issues"])
+            return f"❌ AI Vision has issues: {issues}"
+
+    except Exception as e:
+        return f"❌ Error testing AI Vision: {str(e)}"
 
 def get_ocrmypdf_status_with_validation():
     """Get OCRMyPDF status with validation."""
@@ -736,11 +892,19 @@ def process_url(
     enable_ocrmypdf_preprocessing=False,
     ocrmypdf_deskew=True,
     ocrmypdf_clean=True,
+    enable_ai_vision=False,
+    ai_vision_preserve_formatting=True,
+    ai_vision_include_page_breaks=True,
 ):
     
     # Check if Arabic correction is globally enabled via config
     config = get_arabic_correction_config()
     final_arabic_correction = enable_arabic_correction and config["enabled"]
+
+    # Check if AI Vision is globally enabled via config
+    ai_vision_config = get_ai_vision_config()
+    final_ai_vision = enable_ai_vision and ai_vision_config["enabled"]
+
     parameters = {
         "http_sources": [{"url": source} for source in input_sources.split(",")],
         "options": {
@@ -763,6 +927,9 @@ def process_url(
             "enable_ocrmypdf_preprocessing": enable_ocrmypdf_preprocessing,
             "ocrmypdf_deskew": ocrmypdf_deskew,
             "ocrmypdf_clean": ocrmypdf_clean,
+            "enable_ai_vision": final_ai_vision,
+            "ai_vision_preserve_formatting": ai_vision_preserve_formatting,
+            "ai_vision_include_page_breaks": ai_vision_include_page_breaks,
         },
     }
     if (
@@ -820,7 +987,9 @@ def process_file(
     enable_ocrmypdf_preprocessing=False,
     ocrmypdf_deskew=True,
     ocrmypdf_clean=True,
-
+    enable_ai_vision=False,
+    ai_vision_preserve_formatting=True,
+    ai_vision_include_page_breaks=True,
 ):
     if not files or len(files) == 0:
         logger.error("No files provided.")
@@ -833,8 +1002,13 @@ def process_file(
     config = get_arabic_correction_config()
     final_arabic_correction = enable_arabic_correction and config["enabled"]
 
+    # Check if OCRMyPDF is globally enabled via config
     ocrmypdf_config = get_ocrmypdf_config()
     final_ocrmypdf_preprocessing = enable_ocrmypdf_preprocessing and ocrmypdf_config["enabled"]
+
+    # Check if AI Vision is globally enabled via config
+    ai_vision_config = get_ai_vision_config()
+    final_ai_vision = enable_ai_vision and ai_vision_config["enabled"]
 
     parameters = {
         "file_sources": files_data,
@@ -858,7 +1032,9 @@ def process_file(
             "enable_ocrmypdf_preprocessing": final_ocrmypdf_preprocessing,
             "ocrmypdf_deskew": ocrmypdf_deskew,
             "ocrmypdf_clean": ocrmypdf_clean,
-        
+            "enable_ai_vision": final_ai_vision,
+            "ai_vision_preserve_formatting": ai_vision_preserve_formatting,
+            "ai_vision_include_page_breaks": ai_vision_include_page_breaks,
         },
     }
 
@@ -1214,6 +1390,56 @@ with gr.Blocks(
                         visible=False
                     )
 
+        # AI Vision section
+        with gr.Row():
+            with gr.Column():
+                enable_ai_vision = gr.Checkbox(
+                    label="Enable AI Vision OCR",
+                    value=False,
+                    info="Use AI Vision model for OCR when PDF analysis recommends force mode"
+                )
+            with gr.Column():
+                # Dynamic status with validation
+                ai_vision_status = gr.HTML(
+                    value=get_ai_vision_status_with_validation(),
+                    visible=True
+                )
+
+        # Detailed AI Vision configuration and validation info
+        with gr.Accordion("AI Vision Configuration & Status", open=False):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    ai_vision_detailed_info = gr.HTML(
+                        value=get_detailed_ai_vision_info(),
+                        visible=True
+                    )
+                with gr.Column(scale=1):
+                    test_ai_vision_btn = gr.Button(
+                        "Test Connection",
+                        variant="secondary",
+                        scale=1
+                    )
+                    test_ai_vision_result = gr.Textbox(
+                        label="Test Result",
+                        interactive=False,
+                        visible=False
+                    )
+
+            # AI Vision options
+            with gr.Row():
+                with gr.Column():
+                    ai_vision_preserve_formatting = gr.Checkbox(
+                        label="Preserve Formatting",
+                        value=True,
+                        info="Maintain original document layout and structure"
+                    )
+                with gr.Column():
+                    ai_vision_include_page_breaks = gr.Checkbox(
+                        label="Include Page Breaks",
+                        value=True,
+                        info="Add page break markers between pages"
+                    )
+
     # Task id output
     with gr.Row(visible=False) as task_id_output:
         task_id_rendered = gr.Textbox(label="Task id", interactive=False)
@@ -1293,6 +1519,17 @@ with gr.Blocks(
         outputs=[test_ocrmypdf_result]
     )
 
+    # AI Vision test button
+    test_ai_vision_btn.click(
+        fn=test_ai_vision_connection,
+        inputs=[],
+        outputs=[test_ai_vision_result]
+    ).then(
+        fn=lambda x: gr.Textbox(visible=True),
+        inputs=[test_ai_vision_result],
+        outputs=[test_ai_vision_result]
+    )
+
     # URL processing
     url_process_btn.click(
         set_options_visibility, inputs=[false_bool], outputs=[options]
@@ -1339,7 +1576,9 @@ with gr.Blocks(
             enable_ocrmypdf_preprocessing,
             ocrmypdf_deskew,
             ocrmypdf_clean,
-            
+            enable_ai_vision,
+            ai_vision_preserve_formatting,
+            ai_vision_include_page_breaks,
         ],
         outputs=[
             task_id_rendered,
@@ -1431,6 +1670,9 @@ with gr.Blocks(
             enable_ocrmypdf_preprocessing,
             ocrmypdf_deskew,
             ocrmypdf_clean,
+            enable_ai_vision,
+            ai_vision_preserve_formatting,
+            ai_vision_include_page_breaks,
         ],
         outputs=[
             task_id_rendered,

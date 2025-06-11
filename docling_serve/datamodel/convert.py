@@ -385,6 +385,40 @@ class ConvertDocumentsOptions(BaseModel):
         description="Enable Arabic OCR error correction using LLM"
     )
 
+    enable_ai_vision: Annotated[
+        bool,
+        Field(
+            description=(
+                "If enabled, use AI Vision OCR for supported documents. "
+                "When enabled with force_ocr recommendation, bypasses traditional OCR pipeline. "
+                "Boolean. Optional, defaults to false."
+            ),
+            examples=[False],
+        ),
+    ] = False
+
+    ai_vision_preserve_formatting: Annotated[
+        bool,
+        Field(
+            description=(
+                "Preserve original document formatting when using AI Vision. "
+                "Boolean. Optional, defaults to true."
+            ),
+            examples=[True],
+        ),
+    ] = True
+
+    ai_vision_include_page_breaks: Annotated[
+        bool,
+        Field(
+            description=(
+                "Include page break markers between pages in AI Vision output. "
+                "Boolean. Optional, defaults to true."
+            ),
+            examples=[True],
+        ),
+    ] = True
+
     enable_ocrmypdf_preprocessing: Annotated[
         bool,
         Field(

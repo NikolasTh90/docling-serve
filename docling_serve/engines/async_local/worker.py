@@ -30,6 +30,15 @@ arabic_middleware = ArabicCorrectionMiddleware(
     model_name=arabic_settings.model_name
 )
 
+# Initialize AI Vision middleware
+try:
+    from docling_serve.settings import ai_vision_settings
+    from docling_serve.ai_vision_middleware import AIVisionMiddleware
+    ai_vision_middleware = AIVisionMiddleware(settings=ai_vision_settings) if ai_vision_settings else None
+except ImportError as e:
+    _log.warning(f"AI Vision middleware not available: {e}")
+    ai_vision_middleware = None
+
 try:
     from docling_serve.settings import ocrmypdf_settings
     from docling_serve.ocrmypdf_middleware import OCRMyPDFMiddleware
@@ -55,7 +64,6 @@ class AsyncLocalWorker:
             if task_id not in self.orchestrator.tasks:
                 raise RuntimeError(f"Task {task_id} not found.")
             task = self.orchestrator.tasks[task_id]
-
             try:
                 task.set_status(TaskStatus.STARTED)
                 _log.info(f"Worker {self.worker_id} processing task {task_id}")
@@ -84,6 +92,7 @@ class AsyncLocalWorker:
                     # GLOBAL PDF ANALYSIS - Run before any other processing
                     pdf_analysis_performed = False
                     recommended_ocr_mode = None  # Store the recommended mode for OCRMyPDF
+                    ai_vision_triggered = False
 
                     for source in convert_sources:
                         if isinstance(source, DocumentStream) and should_analyze_file_for_force_ocr(source.name):
@@ -101,13 +110,48 @@ class AsyncLocalWorker:
                                     analysis_results = analyze_pdf(temp_path)
                                     recommended_ocr_mode = analysis_results['recommended_mode']
 
-                                    # Update force_ocr based on analysis
-                                    should_force_ocr = True if recommended_ocr_mode == 'force' else False
-                                    if should_force_ocr and not task.options.force_ocr:
-                                        updated_options = task.options.model_copy(update={'force_ocr': True})
-                                        task.options = updated_options
-                                        _log.info(f"PDF analysis enabled force_ocr for better OCR accuracy on {source.name}")
-                                    
+                                    # Check if AI Vision should be triggered
+                                    enable_ai_vision = getattr(task.options, 'enable_ai_vision', False)
+                                    if (enable_ai_vision and
+                                        ai_vision_middleware and
+                                        ai_vision_middleware.enabled and
+                                        recommended_ocr_mode == 'force' and
+                                        ai_vision_middleware.is_supported_file(source.name)):
+
+                                        _log.info(f"AI Vision workflow triggered for {source.name} due to force OCR recommendation")
+                                        ai_vision_triggered = True
+
+                                        # Process with AI Vision
+                                        try:
+                                            source.stream.seek(0)  # Reset stream position
+                                            markdown_content = ai_vision_middleware.process_document(
+                                                source.stream, source.name
+                                            )
+
+                                            # Create a simple response structure for AI Vision
+                                            from docling_serve.response_preparation import prepare_ai_vision_response
+                                            response = prepare_ai_vision_response(
+                                                markdown_content=markdown_content,
+                                                filename=source.name,
+                                                conversion_options=task.options
+                                            )
+
+                                            _log.info(f"AI Vision processing completed for {source.name}")
+                    return response
+
+            except Exception as e:
+                                            _log.error(f"AI Vision processing failed for {source.name}: {e}")
+                                            # Fall back to normal processing
+                                            ai_vision_triggered = False
+
+                                    # Update force_ocr based on analysis (only if not using AI Vision)
+                                    if not ai_vision_triggered:
+                                        should_force_ocr = True if recommended_ocr_mode == 'force' else False
+                                        if should_force_ocr and not task.options.force_ocr:
+                                            updated_options = task.options.model_copy(update={'force_ocr': True})
+                                            task.options = updated_options
+                                            _log.info(f"PDF analysis enabled force_ocr for better OCR accuracy on {source.name}")
+
                                     _log.info(f"PDF analysis recommends OCR mode: {recommended_ocr_mode} for {source.name}")
                                     pdf_analysis_performed = True
                                     break

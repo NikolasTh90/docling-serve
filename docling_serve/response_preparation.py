@@ -15,8 +15,60 @@ from docling_core.types.doc import ImageRefMode
 
 from docling_serve.datamodel.convert import ConvertDocumentsOptions
 from docling_serve.datamodel.responses import ConvertDocumentResponse, DocumentResponse
+from docling_serve.storage import get_scratch
+from docling_serve.pdf_analysis import analyze_pdf
 
 _log = logging.getLogger(__name__)
+
+
+def prepare_ai_vision_response(
+    markdown_content: str,
+    filename: str,
+    conversion_options
+) -> dict:
+    """Prepare response for AI Vision processed content."""
+
+    # AI Vision always returns markdown, but we need to respect output format preferences
+    response_data = {
+        "document": {
+            "filename": filename,
+            "md_content": markdown_content,
+        }
+    }
+
+    # Convert markdown to other requested formats if needed
+    to_formats = conversion_options.to_formats
+
+    if "json" in to_formats:
+        # Create a simple JSON structure for AI Vision content
+        response_data["document"]["json_content"] = {
+            "type": "document",
+            "content": markdown_content,
+            "source": "ai_vision",
+            "filename": filename
+        }
+
+    if "html" in to_formats:
+        # Convert markdown to HTML
+        try:
+            import markdown
+            html_content = markdown.markdown(markdown_content)
+            response_data["document"]["html_content"] = html_content
+        except ImportError:
+            response_data["document"]["html_content"] = f"<pre>{markdown_content}</pre>"
+
+    if "text" in to_formats:
+        # Strip markdown formatting for plain text
+        import re
+        text_content = re.sub(r'[#*_`\[\]()]', '', markdown_content)
+        text_content = re.sub(r'\n+', '\n', text_content)
+        response_data["document"]["text_content"] = text_content.strip()
+
+    if "doctags" in to_formats:
+        # Simple doctags representation
+        response_data["document"]["doctags_content"] = f"<document>{markdown_content}</document>"
+
+    return response_data
 
 
 def _export_document_as_content(
@@ -222,7 +274,6 @@ def process_results(
         )
 
         # Other cleanups after the response is sent
-        # Output directory
         # background_tasks.add_task(shutil.rmtree, work_dir, ignore_errors=True)
 
         response = FileResponse(

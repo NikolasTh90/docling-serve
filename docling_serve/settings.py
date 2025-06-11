@@ -104,3 +104,12 @@ except ImportError as e:
     import logging
     logging.getLogger(__name__).warning(f"OCRMyPDF settings not available: {e}")
     ocrmypdf_settings = None
+
+# AI Vision settings instance with error handling
+try:
+    from docling_serve.ai_vision_settings import AIVisionSettings
+    ai_vision_settings = AIVisionSettings()
+except ImportError as e:
+    import logging
+    logging.getLogger(__name__).warning(f"AI Vision settings not available: {e}")
+    ai_vision_settings = None
