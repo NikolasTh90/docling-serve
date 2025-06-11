@@ -102,8 +102,7 @@ class AsyncLocalWorker:
                                     recommended_ocr_mode = analysis_results['recommended_mode']
 
                                     # Update force_ocr based on analysis
-                                    should_force_ocr = (recommended_ocr_mode == 'force' or
-                                                      analysis_results['text_quality'] == 'poor')
+                                    should_force_ocr = True if recommended_ocr_mode == 'force' else False
                                     if should_force_ocr and not task.options.force_ocr:
                                         updated_options = task.options.model_copy(update={'force_ocr': True})
                                         task.options = updated_options
