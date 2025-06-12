@@ -32,9 +32,9 @@ class Line:
         nl     = m.group('nl')     or ''
 
         # 1) reverse the mirrored input
-        rev = body[::-1]
+        # rev = body[::-1]
         # 2) apply full Unicode-BiDi to handle mixed runs
-        bidi_fixed = get_display(rev)
+        bidi_fixed = get_display(body)
 
         return prefix + bidi_fixed + nl
 
@@ -240,9 +240,13 @@ class BiDiProcessor:
 
 
 def main():
-    src = sys.stdin.read()
+    # src = input("Enter markdown content: ")
+    src = """
+## يكالهتسالا ليومتلا طباوضي
+            """
+    print("source: ", src)
     result = MarkdownProcessor(src).process()
-    sys.stdout.write(result)
+    print("result: ",result)
 
 
 if __name__ == '__main__':
