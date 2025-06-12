@@ -375,6 +375,23 @@ def validate_ai_vision_environment():
         return validation_result
 
     # Check required packages
+def validate_ai_vision_environment():
+    """Validate AI Vision environment configuration."""
+    validation_result = {
+        "status": "unknown",
+        "issues": [],
+        "warnings": [],
+        "info": []
+    }
+    
+    config = get_ai_vision_config()
+
+    if not config["enabled"]:
+        validation_result["status"] = "disabled"
+        validation_result["info"].append("AI Vision is disabled in configuration")
+        return validation_result
+
+    # Check required packages
     try:
         import pdf2image
         import PIL
@@ -397,23 +414,60 @@ def validate_ai_vision_environment():
             validation_result["status"] = "error"
         else:
             try:
-                        client = ollama.Client(host=config["host"])
-                        models = client.list()
-                        available_models = [model['name'] for model in models.get('models', [])]
+                client = ollama.Client(host=config["host"])
+                raw = client.list()
 
-                        if config["model"] in available_models:
-                            validation_result["status"] = "healthy"
-                            validation_result["info"].append(f"Vision model '{config['model']}' is available")
-                        else:
-                            validation_result["issues"].append(f"Vision model '{config['model']}' not found in Ollama")
-                            validation_result["status"] = "error"
+                # normalize into a list of model-entry objects
+                if isinstance(raw, dict) and "models" in raw:
+                    entries = raw["models"]
+                elif hasattr(raw, "models"):
+                    entries = raw.models
+                elif isinstance(raw, tuple) and len(raw) == 2 and raw[0] == "models":
+                    entries = raw[1]
+                else:
+                    entries = raw
+
+                available_models = []
+                for e in entries:
+                    # first look for `.model`, then `.name`, else fall back to str()
+                    name = getattr(e, "model", None) or getattr(e, "name", None) or str(e)
+                    available_models.append(name)
+
+                if config["model"] in available_models:
+                    validation_result["status"] = "healthy"
+                    validation_result["info"].append(f"Vision model '{config['model']}' is available")
+                    
+                    # Quick smoke-test of the model
+                    try:
+                        test = client.chat(
+                            model=config["model"],
+                            messages=[{"role": "user", "content": "test"}],
+                            options={"max_tokens": 1},
+                        )
+                        if not test:
+                            validation_result["warnings"].append(f"Model '{config['model']}' loaded but did not respond")
+                    except Exception as e:
+                        validation_result["warnings"].append(f"Model '{config['model']}' test failed: {str(e)[:100]}")
+                else:
+                    validation_result["issues"].append(f"Vision model '{config['model']}' not found in Ollama")
+                    validation_result["status"] = "error"
             except Exception as e:
-                        validation_result["issues"].append(f"Failed to check models: {str(e)[:100]}")
-                        validation_result["status"] = "error"
+                validation_result["issues"].append(f"Failed to check models: {str(e)[:100]}")
+                validation_result["status"] = "error"
 
-    except Exception as e:
-        validation_result["issues"].append(f"Failed to connect to Ollama: {str(e)[:100]}")
+    except requests.exceptions.Timeout:
+        validation_result["issues"].append(f"Timeout connecting to Ollama at {config['host']} (>10s)")
         validation_result["status"] = "error"
+    except requests.exceptions.ConnectionError:
+        validation_result["issues"].append(f"Cannot connect to Ollama at {config['host']} - is Ollama running?")
+        validation_result["status"] = "error"
+    except Exception as e:
+        validation_result["issues"].append(f"Error checking Ollama connectivity: {str(e)[:100]}")
+        validation_result["status"] = "error"
+
+    # Set final status if not already set to error
+    if validation_result["status"] not in ["error", "healthy"]:
+        validation_result["status"] = "warning" if validation_result["warnings"] else "healthy"
 
     return validation_result
 
