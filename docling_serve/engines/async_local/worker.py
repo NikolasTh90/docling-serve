@@ -14,7 +14,7 @@ from docling_serve.datamodel.requests import FileSource, HttpSource
 from docling_serve.docling_conversion import convert_documents
 from docling_serve.response_preparation import process_results
 from docling_serve.storage import get_scratch
-from docling_serve.pdf_analysis import analyze_pdf_for_force_ocr, should_analyze_file_for_force_ocr, analyze_pdf+
+from docling_serve.pdf_analysis import analyze_pdf_for_force_ocr, should_analyze_file_for_force_ocr, analyze_pdf
 from docling_serve.post_processing_bidi import MarkdownProcessor
 
 if TYPE_CHECKING:
