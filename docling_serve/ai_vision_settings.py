@@ -24,7 +24,7 @@ class AIVisionSettings(BaseSettings):
     
     # Vision model specific settings
     temperature: float = 0.1   # Low temperature for consistent OCR-like output
-    max_tokens: int = 4096     # Max tokens per response
+    max_tokens: int = 100000    # Max tokens per response
     
     # Output formatting
     preserve_formatting: bool = True

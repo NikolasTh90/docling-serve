@@ -169,6 +169,15 @@ def create_app():  # noqa: C901
         _log.warning(f"Failed to initialize Arabic correction middleware: {e}")
         arabic_middleware = ArabicCorrectionMiddleware(enabled=False)
 
+    try:
+        from docling_serve.ai_vision_middleware import AIVisionMiddleware
+        from docling_serve.settings import ai_vision_settings
+        ai_vision_middleware = AIVisionMiddleware(ai_vision_settings)
+        _log.info(f"AI Vision middleware initialized: enabled={ai_vision_middleware.enabled}")
+    except ImportError as e:
+        _log.warning(f"AI Vision middleware not available: {e}")
+        ai_vision_middleware = None
+
     offline_docs_assets = False
     if (
         docling_serve_settings.static_path is not None

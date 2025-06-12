@@ -1129,8 +1129,31 @@ def log_arabic_correction_startup_status():
     except Exception as e:
         logger.error(f"Error checking Arabic correction status on startup: {e}")
 
+from docling_serve.ai_vision_middleware import AIVisionMiddleware
+from docling_serve.settings import ai_vision_settings
+ai_vision_middleware = AIVisionMiddleware(ai_vision_settings)
+def log_ai_vision_startup_status():
+    """Log AI Vision status on startup for debugging."""
+    try:
+        validation_result = ai_vision_middleware.validate_environment() if ai_vision_middleware else {"status": "not_initialized"}
+        config = get_ai_vision_config()
+        
+        logger.info(f"AI Vision - Enabled: {config['enabled']}")
+        logger.info(f"AI Vision - Host: {config['host']}")
+        logger.info(f"AI Vision - Model: {config['model']}")
+        logger.info(f"AI Vision - Status: {validation_result['status']}")
+        
+        if validation_result.get('issues'):
+            for issue in validation_result['issues']:
+                logger.warning(f"AI Vision Issue: {issue}")
+                
+    except Exception as e:
+        logger.error(f"Error checking AI Vision status on startup: {e}")
+
 # Call this at the end of the file, before the UI definition
 log_arabic_correction_startup_status()
+
+log_ai_vision_startup_status()
 
 
 ############
