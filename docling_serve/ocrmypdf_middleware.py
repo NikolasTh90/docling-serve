@@ -158,7 +158,9 @@ class OCRMyPDFMiddleware:
                     'jobs': self.settings.max_workers,
                     'use_threads': self.settings.use_threads,
                     'pdf_renderer': self.settings.pdf_renderer,
-                    'output_type': self.settings.output_type
+                    'output_type': self.settings.output_type,
+                    'tesseract_oem': self.settings.tesseract_oem_mode
+
                 }
 
                 # Add language specification if provided

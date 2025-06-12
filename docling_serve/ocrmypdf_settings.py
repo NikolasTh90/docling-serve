@@ -43,6 +43,7 @@ class OCRMyPDFSettings(BaseSettings):
     
     # Advanced OCRMyPDF options
     tesseract_timeout: Optional[float] = None
+    tesseract_oem_mode: int = 1  # 0=Legacy, 1=LSTM (default), 2=Legacy+LSTM, 3=Auto
     clean_final: bool = False  # This can also conflict with redo_ocr
     pdf_renderer: Optional[str] = None
     

@@ -682,6 +682,18 @@ download_tessdata() {
     else
         mkdir -p "$TESSDATA_DIR"
     fi
+
+    # Always download osd.traineddata (Orientation and Script Detection) first
+    print_info "Downloading osd.traineddata (Orientation and Script Detection)..."
+    if [[ "$PREFIX" == "/usr/local" ]] && [[ $EUID -ne 0 ]]; then
+        sudo wget "$TESSDATA_URL/osd.traineddata" -O "$TESSDATA_DIR/osd.traineddata" || {
+            print_warning "Failed to download osd.traineddata"
+        }
+    else
+        wget "$TESSDATA_URL/osd.traineddata" -O "$TESSDATA_DIR/osd.traineddata" || {
+            print_warning "Failed to download osd.traineddata"
+        }
+    fi
     
     # Split languages by comma and download each
     IFS=',' read -ra LANG_ARRAY <<< "$LANGUAGES"
