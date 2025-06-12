@@ -251,7 +251,7 @@ class AsyncLocalWorker:
                         try:
                             _log.info(f"Applying BiDi text processing for task {task_id}")
                             response = bidi_processor.process_conversion_result(response)
-                                    _log.info(f"BiDi processing completed for task {task_id}")
+                            _log.info(f"BiDi processing completed for task {task_id}")
                         except Exception as e:
                             _log.error(f"BiDi processing failed for task {task_id}: {e}", exc_info=True)
                             # Continue without BiDi processing rather than failing the entire task
