@@ -15,7 +15,7 @@ from docling_serve.docling_conversion import convert_documents
 from docling_serve.response_preparation import process_results
 from docling_serve.storage import get_scratch
 from docling_serve.pdf_analysis import analyze_pdf_for_force_ocr, should_analyze_file_for_force_ocr, analyze_pdf
-from docling_serve.post_processing_bidi import MarkdownProcessor
+from docling_serve.post_processing_bidi import MarkdownProcessor, BiDiProcessor
 
 if TYPE_CHECKING:
     from docling_serve.engines.async_local.orchestrator import AsyncLocalOrchestrator
@@ -30,6 +30,9 @@ arabic_middleware = ArabicCorrectionMiddleware(
     ollama_host=arabic_settings.ollama_host,
     model_name=arabic_settings.model_name
 )
+
+# Initialize BiDi processor
+bidi_processor = BiDiProcessor(enabled=True)
 
 # Initialize AI Vision middleware
 try:
@@ -242,38 +245,16 @@ class AsyncLocalWorker:
                             _log.error(f"Arabic correction failed for task {task_id}: {e}", exc_info=True)
                             # Continue without correction rather than failing the entire task
                     
-                    #  Apply BiDi processing if enabled and requested
+                    # Apply BiDi processing if enabled and requested
                     enable_bidi_processing = getattr(task.options, 'enable_bidi_processing', False)
                     if enable_bidi_processing:
                         try:
                             _log.info(f"Applying BiDi text processing for task {task_id}")
-                            
-                            # Check if response contains markdown content
-                            if hasattr(response, 'json') and callable(response.json):
-                                # Handle JSON response (direct conversion)
-                                response_data = response.json()
-                                if ('document' in response_data and 
-                                    'md_content' in response_data['document'] and 
-                                    response_data['document']['md_content']):
-                                    
-                                    original_markdown = response_data['document']['md_content']
-                                    processor = MarkdownProcessor(original_markdown)
-                                    processed_markdown = processor.process()
-                                    response_data['document']['md_content'] = processed_markdown
-                                    
-                                    # Update the response with processed content
-                                    from fastapi.responses import JSONResponse
-                                    response = JSONResponse(content=response_data)
+                            response = bidi_processor.process_conversion_result(response)
                                     _log.info(f"BiDi processing completed for task {task_id}")
-                            
-                            elif hasattr(response, 'content'):
-                                # Handle file response - BiDi processing not applicable
-                                _log.info(f"BiDi processing skipped for file response in task {task_id}")
-                            else:
-                                _log.warning(f"Unknown response type for BiDi processing in task {task_id}")
-                                
                         except Exception as e:
                             _log.error(f"BiDi processing failed for task {task_id}: {e}", exc_info=True)
+                            # Continue without BiDi processing rather than failing the entire task
 
                     if work_dir.exists():
                         task.scratch_dir = work_dir
