@@ -48,11 +48,12 @@ class RTLBlock:
         self.lines.append(line)
 
     def render(self) -> str:
-        return self.lines
-        out = ['<div dir="rtl">\n']
+        # return self.lines
+        out = []
+        # out = ['<div dir="rtl">\n']
         for ln in self.lines:
             out.append(ln.reversed())
-        out.append('</div>\n')
+        # out.append('</div>\n')
         return ''.join(out)
 
 
