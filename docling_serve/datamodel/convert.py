@@ -453,6 +453,18 @@ class ConvertDocumentsOptions(BaseModel):
         ),
     ] = True
 
+    enable_bidi_processing: Annotated[
+        bool,
+        Field(
+            description=(
+                "If enabled, apply bidirectional text processing to markdown output "
+                "for proper display of Arabic/RTL content. Wraps RTL text blocks in "
+                "HTML div tags with dir='rtl' attribute. Boolean. Optional, defaults to false."
+            ),
+            examples=[False],
+        ),
+    ] = False
+
     @model_validator(mode="after")
     def picture_description_exclusivity(self) -> Self:
         # Validate picture description options

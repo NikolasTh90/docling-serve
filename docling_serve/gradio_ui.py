@@ -949,6 +949,7 @@ def process_url(
     enable_ai_vision=False,
     ai_vision_preserve_formatting=True,
     ai_vision_include_page_breaks=True,
+    enable_bidi_processing=False
 ):
     
     # Check if Arabic correction is globally enabled via config
@@ -984,6 +985,7 @@ def process_url(
             "enable_ai_vision": final_ai_vision,
             "ai_vision_preserve_formatting": ai_vision_preserve_formatting,
             "ai_vision_include_page_breaks": ai_vision_include_page_breaks,
+            "enable_bidi_processing": enable_bidi_processing,
         },
     }
     if (
@@ -1044,6 +1046,7 @@ def process_file(
     enable_ai_vision=False,
     ai_vision_preserve_formatting=True,
     ai_vision_include_page_breaks=True,
+    enable_bidi_processing=False,
 ):
     if not files or len(files) == 0:
         logger.error("No files provided.")
@@ -1089,6 +1092,7 @@ def process_file(
             "enable_ai_vision": final_ai_vision,
             "ai_vision_preserve_formatting": ai_vision_preserve_formatting,
             "ai_vision_include_page_breaks": ai_vision_include_page_breaks,
+            "enable_bidi_processing": enable_bidi_processing,
         },
     }
 
@@ -1401,7 +1405,19 @@ with gr.Blocks(
                     value=get_arabic_correction_status_with_validation(),
                     visible=True
                 )
-        
+        # BiDi processing section
+        with gr.Row():
+            with gr.Column():
+                enable_bidi_processing = gr.Checkbox(
+                    label="Enable BiDi Text Processing",
+                    value=False,
+                    info="Apply bidirectional text processing for proper Arabic/RTL display"
+                )
+            with gr.Column():
+                gr.HTML(
+                    value="<small style='color: blue;'>ℹ️ Wraps RTL text blocks with HTML dir='rtl' tags</small>",
+                    visible=True
+                )
         # Detailed configuration and validation info
         with gr.Accordion("Arabic Correction Configuration & Status", open=False):
             with gr.Row():
@@ -1656,6 +1672,7 @@ with gr.Blocks(
             enable_ai_vision,
             ai_vision_preserve_formatting,
             ai_vision_include_page_breaks,
+            enable_bidi_processing,
         ],
         outputs=[
             task_id_rendered,
@@ -1750,6 +1767,7 @@ with gr.Blocks(
             enable_ai_vision,
             ai_vision_preserve_formatting,
             ai_vision_include_page_breaks,
+            enable_bidi_processing,
         ],
         outputs=[
             task_id_rendered,
