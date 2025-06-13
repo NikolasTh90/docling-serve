@@ -78,11 +78,11 @@ RUN curl -L https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/downl
 # Install pngquant from source
 RUN git clone https://github.com/kornelski/pngquant.git \
  && cd pngquant \
- && mkdir build && cd build \
- && cmake -DCMAKE_BUILD_TYPE=Release .. \
+ && autoreconf -f -i \
+ && ./configure \
  && make -j$(nproc) \
  && make install \
- && cd ../.. \
+ && cd .. \
  && rm -rf pngquant
 
 # Install UV package manager for faster dependency resolution
