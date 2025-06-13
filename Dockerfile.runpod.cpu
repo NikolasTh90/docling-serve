@@ -79,7 +79,7 @@ RUN curl -L https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/downl
 RUN git clone https://github.com/kornelski/pngquant.git \
  && cd pngquant \
  && autoreconf -f -i \
- && ./configure --prefix=/usr/local \
+ && ./configure \
  && make -j$(nproc) \
  && make install \
  && cd .. \
