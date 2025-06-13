@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM runpod/base:0.6.3-cpu
 
 # Set working directory
 WORKDIR /app
