@@ -76,14 +76,19 @@ RUN curl -L https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/downl
  && rm -rf ghostscript-10.05.1
 
 # Install pngquant from source
+RUN apt-get update && apt-get install -y curl build-essential \
+ && curl https://sh.rustup.rs -sSf | sh -s -- -y \
+ && . $HOME/.cargo/env
+
+# Build & install pngquant via Cargo
 RUN git clone https://github.com/kornelski/pngquant.git \
  && cd pngquant \
- && autoreconf -f -i \
- && ./configure \
- && make -j$(nproc) \
- && make install \
+ && . $HOME/.cargo/env \
+ && cargo build --release \
+ && cp target/release/pngquant /usr/local/bin \
  && cd .. \
  && rm -rf pngquant
+
 
 # Install UV package manager for faster dependency resolution
 RUN pip install --upgrade setuptools[core]
