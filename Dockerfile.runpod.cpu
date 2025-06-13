@@ -44,12 +44,24 @@ RUN chmod +x /usr/local/bin/build_tesseract.sh
 # Build and install Tesseract with Arabic and Greek language support
 RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell --jobs 12
 
+
+# Install GNU Autoconf ≥2.71 from source (so jbig2enc’s autogen works)
+RUN apt-get update && apt-get install -y wget \
+ && wget https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz \
+ && tar xzf autoconf-2.71.tar.gz \
+ && cd autoconf-2.71 \
+ && ./configure --prefix=/usr/local \
+ && make -j$(nproc) \
+ && make install \
+ && cd .. \
+ && rm -rf autoconf-2.71* autoconf-2.71.tar.gz
+
 # Install jbig2 encoder
 RUN  git clone https://github.com/agl/jbig2enc.git \
     && cd jbig2enc \
     && ./autogen.sh \
     && ./configure \
-    && make -j12 \
+    && make -j$(nproc) \
     && make install \
     && cd .. \
     && rm -rf jbig2enc
@@ -58,7 +70,7 @@ RUN  git clone https://github.com/agl/jbig2enc.git \
 RUN curl -L https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10051/ghostscript-10.05.1.tar.gz | tar xz \
  && cd ghostscript-10.05.1 \
  && ./configure \
- && make -j12 \
+ && make -j$(nproc) \
  && make install \
  && cd .. \
  && rm -rf ghostscript-10.05.1
@@ -68,7 +80,7 @@ RUN git clone https://github.com/kornelski/pngquant.git \
  && cd pngquant \
  && autoreconf -f -i \
  && ./configure --prefix=/usr/local \
- && make -j12 \
+ && make -j$(nproc) \
  && make install \
  && cd .. \
  && rm -rf pngquant
