@@ -45,8 +45,7 @@ RUN chmod +x /usr/local/bin/build_tesseract.sh
 RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell --jobs 12
 
 # Install jbig2 encoder
-RUN export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH \
-    && git clone https://github.com/agl/jbig2enc.git \
+RUN  git clone https://github.com/agl/jbig2enc.git \
     && cd jbig2enc \
     && ./autogen.sh \
     && ./configure \
