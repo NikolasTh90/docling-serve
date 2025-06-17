@@ -51,7 +51,7 @@ dependencies = [
     "pdfplumber>=0.10.0",
     "pdf2image>=1.17.0",
     "pillow>=11.2.1",
-    "hf_transfer"
+    "hf-transfer"
 
 ]
 
