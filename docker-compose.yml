@@ -12,7 +12,7 @@ services:
       - ./data:/app/data
       # - tessdata:/usr/local/share/tessdata
 
-    command: "uv run docling-serve run"
+    command: "uv run --extra ui docling-serve run"
 
     restart: unless-stopped
 
