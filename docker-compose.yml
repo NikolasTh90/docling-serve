@@ -12,16 +12,7 @@ services:
       - ./data:/app/data
       # - tessdata:/usr/local/share/tessdata
 
-    command: >
-      sh -c "
-        if [ \"$$DOCLING_DEV_MODE\" = \"true\" ]; then
-          echo 'Starting in development mode...';
-          docling-serve dev --host 0.0.0.0 --port 5001 --enable-ui;
-        else
-          echo 'Starting in production mode...';
-          docling-serve run --host 0.0.0.0 --port 5001 --enable-ui;
-        fi
-      "
+    command: "uv run docling-serve run"
 
     restart: unless-stopped
 
