@@ -10,6 +10,7 @@ services:
       - "5001:5001"
     volumes:
       - ./data:/app/data
+      - .env:.env
       # - tessdata:/usr/local/share/tessdata
 
     command: "uv run --extra ui docling-serve run"
