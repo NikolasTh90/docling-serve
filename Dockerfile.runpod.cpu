@@ -111,4 +111,4 @@ RUN uv sync --extra ui
 # Now copy the rest of the application code
 COPY . /app
 
-CMD [ "uv run docling-serve run" ]
+CMD [ "uv run --extra ui docling-serve run" ]
