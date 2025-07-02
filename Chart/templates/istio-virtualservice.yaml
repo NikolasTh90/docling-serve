@@ -1,0 +1,26 @@
+{{- if and .Values.istio.enabled .Values.istio.virtualService.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-vs
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+spec:
+  hosts:
+  {{- range .Values.istio.gateway.hosts }}
+  - {{ . }}
+  {{- end }}
+  gateways:
+  - {{ .Values.istio.gateway.name | default (printf "%s-gateway" (include "docling-serve.fullname" .)) }}
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: {{ include "docling-serve.fullname" . }}
+        port:
+          number: {{ .Values.service.port }}
+    timeout: {{ .Values.istio.virtualService.timeout }}
+{{- end }}

@@ -1,0 +1,34 @@
+{{- if and .Values.istio.enabled .Values.istio.gateway.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ .Values.istio.gateway.name | default (printf "%s-gateway" (include "docling-serve.fullname" .)) }}
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    {{- range .Values.istio.gateway.hosts }}
+    - {{ . }}
+    {{- end }}
+  {{- if .Values.istio.gateway.tls.enabled }}
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: {{ .Values.istio.gateway.tls.credentialName }}
+    hosts:
+    {{- range .Values.istio.gateway.hosts }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end }}

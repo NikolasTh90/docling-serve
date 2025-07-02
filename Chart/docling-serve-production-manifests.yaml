@@ -1,0 +1,288 @@
+---
+# Source: docling-serve/templates/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+    istio-injection: enabled
+---
+# Source: docling-serve/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: docling-serve
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: docling-serve/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docling-serve-config
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+data:
+  # Arabic Correction Settings
+  DOCLING_ARABIC_ENABLED: "false"
+  DOCLING_ARABIC_OLLAMA_HOST: "http://localhost:11434"
+  DOCLING_ARABIC_MODEL_NAME: "command-r7b-arabic:latest"
+  DOCLING_ARABIC_TIMEOUT: "300"
+  DOCLING_ARABIC_ENABLE_REMOTE_SERVICES: "false"
+  
+  # OCRMyPDF Preprocessing Settings
+  DOCLING_OCRMYPDF_ENABLED: "true"
+  DOCLING_OCRMYPDF_DESKEW: "true"
+  DOCLING_OCRMYPDF_CLEAN: "true"
+  DOCLING_OCRMYPDF_OPTIMIZE: "2"
+  DOCLING_OCRMYPDF_OVERSAMPLE: "200"
+  DOCLING_OCRMYPDF_REMOVE_BACKGROUND: "false"
+  DOCLING_OCRMYPDF_FORCE_OCR: "true"
+  DOCLING_OCRMYPDF_SKIP_TEXT: "false"
+  DOCLING_OCRMYPDF_REDO_OCR: "false"
+  DOCLING_OCRMYPDF_PROGRESS_BAR: "false"
+  DOCLING_OCRMYPDF_TIMEOUT: "600"
+  DOCLING_OCRMYPDF_LANGUAGE_DETECTION: "true"
+  DOCLING_OCRMYPDF_MAX_FILE_SIZE_MB: "200"
+  DOCLING_OCRMYPDF_FAIL_ON_ERROR: "false"
+  DOCLING_OCRMYPDF_FALLBACK_ON_FAILURE: "true"
+  DOCLING_OCRMYPDF_PARALLEL_PROCESSING: "true"
+  DOCLING_OCRMYPDF_CLEAN_FINAL: "true"
+  
+  # OCRMyPDF Logging Settings
+  DOCLING_OCRMYPDF_VERBOSITY: "1"
+  DOCLING_OCRMYPDF_PROGRESS_BAR_FRIENDLY: "true"
+  DOCLING_OCRMYPDF_MANAGE_ROOT_LOGGER: "false"
+  
+  # Uvicorn Settings
+  UVICORN_RELOAD: "false"
+  UVICORN_HOST: "0.0.0.0"
+  UVICORN_PORT: "5001"
+  UVICORN_LOG_LEVEL: "warning"
+  UVICORN_WORKERS: "4"
+  
+  # Docling Serve Settings
+  DOCLING_SERVE_ENABLE_UI: "true"
+  DOCLING_SERVE_ARTIFACTS_PATH: ""
+  DOCLING_SERVE_API_HOST: "0.0.0.0"
+  DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT: "86400"
+  DOCLING_SERVE_MAX_SYNC_WAIT: "600"
+---
+# Source: docling-serve/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: docling-serve-data
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Source: docling-serve/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: docling-serve
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5001
+      targetPort: 5001
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+---
+# Source: docling-serve/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docling-serve
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: docling-serve
+      app.kubernetes.io/instance: docling-serve
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/proxyCPU: 100m
+        sidecar.istio.io/proxyMemory: 128Mi
+      labels:
+        app.kubernetes.io/name: docling-serve
+        app.kubernetes.io/instance: docling-serve
+        version: v1
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - office-worker-8
+      serviceAccountName: docling-serve
+      securityContext:
+        {}
+      containers:
+        - name: docling-serve
+          securityContext:
+            {}
+          image: "quay.io/pxworks/docling-serve:cpu"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: docling-serve-config
+          volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 31500m
+              memory: 16Gi
+            requests:
+              cpu: 24000m
+              memory: 6Gi
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: docling-serve-data
+---
+# Source: docling-serve/templates/istio-destinationrule.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: docling-serve-dr
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  host: docling-serve
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        maxRequestsPerConnection: 10
+        h2MaxRequests: 100
+        maxRetries: 3
+        idleTimeout: 90s
+---
+# Source: docling-serve/templates/istio-gateway.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: docling-serve-gateway
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - ocr.k8s.pxworks.co
+---
+# Source: docling-serve/templates/istio-virtualservice.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: docling-serve-vs
+  namespace: docling-serve
+  labels:
+    helm.sh/chart: docling-serve-0.1.0
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hosts:
+  - ocr.k8s.pxworks.co
+  gateways:
+  - docling-serve-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: docling-serve
+        port:
+          number: 5001
+    timeout: 600s

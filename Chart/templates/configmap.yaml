@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-config
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+data:
+  # Arabic Correction Settings
+  DOCLING_ARABIC_ENABLED: {{ .Values.env.arabic.enabled | quote }}
+  DOCLING_ARABIC_OLLAMA_HOST: {{ .Values.env.arabic.ollamaHost | quote }}
+  DOCLING_ARABIC_MODEL_NAME: {{ .Values.env.arabic.modelName | quote }}
+  DOCLING_ARABIC_TIMEOUT: {{ .Values.env.arabic.timeout | quote }}
+  DOCLING_ARABIC_ENABLE_REMOTE_SERVICES: {{ .Values.env.arabic.enableRemoteServices | quote }}
+  
+  # OCRMyPDF Preprocessing Settings
+  DOCLING_OCRMYPDF_ENABLED: {{ .Values.env.ocrmypdf.enabled | quote }}
+  DOCLING_OCRMYPDF_DESKEW: {{ .Values.env.ocrmypdf.deskew | quote }}
+  DOCLING_OCRMYPDF_CLEAN: {{ .Values.env.ocrmypdf.clean | quote }}
+  DOCLING_OCRMYPDF_OPTIMIZE: {{ .Values.env.ocrmypdf.optimize | quote }}
+  DOCLING_OCRMYPDF_OVERSAMPLE: {{ .Values.env.ocrmypdf.oversample | quote }}
+  DOCLING_OCRMYPDF_REMOVE_BACKGROUND: {{ .Values.env.ocrmypdf.removeBackground | quote }}
+  DOCLING_OCRMYPDF_FORCE_OCR: {{ .Values.env.ocrmypdf.forceOcr | quote }}
+  DOCLING_OCRMYPDF_SKIP_TEXT: {{ .Values.env.ocrmypdf.skipText | quote }}
+  DOCLING_OCRMYPDF_REDO_OCR: {{ .Values.env.ocrmypdf.redoOcr | quote }}
+  DOCLING_OCRMYPDF_PROGRESS_BAR: {{ .Values.env.ocrmypdf.progressBar | quote }}
+  DOCLING_OCRMYPDF_TIMEOUT: {{ .Values.env.ocrmypdf.timeout | quote }}
+  DOCLING_OCRMYPDF_LANGUAGE_DETECTION: {{ .Values.env.ocrmypdf.languageDetection | quote }}
+  DOCLING_OCRMYPDF_MAX_FILE_SIZE_MB: {{ .Values.env.ocrmypdf.maxFileSizeMb | quote }}
+  DOCLING_OCRMYPDF_FAIL_ON_ERROR: {{ .Values.env.ocrmypdf.failOnError | quote }}
+  DOCLING_OCRMYPDF_FALLBACK_ON_FAILURE: {{ .Values.env.ocrmypdf.fallbackOnFailure | quote }}
+  DOCLING_OCRMYPDF_PARALLEL_PROCESSING: {{ .Values.env.ocrmypdf.parallelProcessing | quote }}
+  DOCLING_OCRMYPDF_CLEAN_FINAL: {{ .Values.env.ocrmypdf.cleanFinal | quote }}
+  
+  # OCRMyPDF Logging Settings
+  DOCLING_OCRMYPDF_VERBOSITY: {{ .Values.env.ocrmypdf.verbosity | quote }}
+  DOCLING_OCRMYPDF_PROGRESS_BAR_FRIENDLY: {{ .Values.env.ocrmypdf.progressBarFriendly | quote }}
+  DOCLING_OCRMYPDF_MANAGE_ROOT_LOGGER: {{ .Values.env.ocrmypdf.manageRootLogger | quote }}
+  
+  # Uvicorn Settings
+  UVICORN_RELOAD: {{ .Values.env.uvicorn.reload | quote }}
+  UVICORN_HOST: {{ .Values.env.uvicorn.host | quote }}
+  UVICORN_PORT: {{ .Values.env.uvicorn.port | quote }}
+  UVICORN_LOG_LEVEL: {{ .Values.env.uvicorn.logLevel | quote }}
+  UVICORN_WORKERS: {{ .Values.env.uvicorn.workers | quote }}
+  
+  # Docling Serve Settings
+  DOCLING_SERVE_ENABLE_UI: {{ .Values.env.doclingServe.enableUi | quote }}
+  DOCLING_SERVE_ARTIFACTS_PATH: {{ .Values.env.doclingServe.artifactsPath | quote }}
+  DOCLING_SERVE_API_HOST: {{ .Values.env.doclingServe.apiHost | quote }}
+  DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT: {{ .Values.env.doclingServe.maxDocumentTimeout | quote }}
+  DOCLING_SERVE_MAX_SYNC_WAIT: {{ .Values.env.doclingServe.maxSyncWait | quote }}

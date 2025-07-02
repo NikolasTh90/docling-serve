@@ -1,0 +1,22 @@
+# Development overrides
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 2000m
+    memory: 2Gi
+  limits:
+    cpu: 4000m
+    memory: 4Gi
+
+nodeAffinity:
+  enabled: false
+
+env:
+  uvicorn:
+    reload: true
+    logLevel: "debug"
+    workers: 4
+
+  ocrmypdf:
+    verbosity: 2  # More verbose for debugging

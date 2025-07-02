@@ -1,0 +1,11 @@
+{{- if not .Values.namespaceOverride }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+    {{- if .Values.istio.enabled }}
+    istio-injection: enabled
+    {{- end }}
+{{- end }}

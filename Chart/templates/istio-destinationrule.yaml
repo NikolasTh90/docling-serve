@@ -1,0 +1,21 @@
+{{- if and .Values.istio.enabled .Values.istio.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-dr
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+spec:
+  host: {{ include "docling-serve.fullname" . }}
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: {{ .Values.istio.destinationRule.connectionPool.tcp.maxConnections }}
+      http:
+        http1MaxPendingRequests: {{ .Values.istio.destinationRule.connectionPool.http.http1MaxPendingRequests }}
+        maxRequestsPerConnection: {{ .Values.istio.destinationRule.connectionPool.http.maxRequestsPerConnection }}
+        h2MaxRequests: {{ .Values.istio.destinationRule.connectionPool.http.h2MaxRequests }}
+        maxRetries: {{ .Values.istio.destinationRule.connectionPool.http.maxRetries }}
+        idleTimeout: {{ .Values.istio.destinationRule.connectionPool.http.idleTimeout }}
+{{- end }}

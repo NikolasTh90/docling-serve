@@ -1,0 +1,16 @@
+apiVersion: v2
+name: docling-serve
+description: A Helm chart for Docling Serve OCR service
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - ocr
+  - pdf
+  - document-processing
+home: https://github.com/docling-project/docling-serve
+sources:
+  - https://github.com/docling-project/docling-serve
+maintainers:
+  - name: PXWorks
+    email: admin@pxworks.co

@@ -1,0 +1,36 @@
+# Production overrides
+replicaCount: 1
+
+image:
+  tag: "cpu"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 15000m  # More aggressive CPU for production
+    memory: 6Gi
+  limits:
+    cpu: 26000m
+    memory: 16Gi
+
+nodeAffinity:
+  enabled: true
+  preferredNode: office-worker-8
+  required: true  # Require specific node in production
+
+persistence:
+  size: 10Gi  # Larger storage for production
+
+env:
+  uvicorn:
+    logLevel: "warning"  # Less verbose logging
+    workers: 4  # More workers for production
+
+# Skip namespace creation since we created it manually
+namespaceOverride: docling-serve
+
+# istio:
+#   gateway:
+#     tls:
+#       enabled: true
+#       credentialName: ocr-tls-secret

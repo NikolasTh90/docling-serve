@@ -1,0 +1,177 @@
+# Global settings
+global:
+  nameOverride: ""
+  fullnameOverride: ""
+
+# Image configuration
+image:
+  repository: quay.io/pxworks/docling-serve
+  tag: cpu
+  pullPolicy: IfNotPresent
+
+# Image pull secrets for private repositories
+imagePullSecrets:
+  - name: quay-registry-secret
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5001
+  targetPort: 5001
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    - host: ocr.k8s.pxworks.co
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Istio configuration
+istio:
+  enabled: true
+  gateway:
+    enabled: true
+    name: docling-serve-gateway
+    hosts:
+      - ocr.k8s.pxworks.co
+    tls:
+      enabled: false
+      credentialName: docling-serve-tls
+  virtualService:
+    enabled: true
+    timeout: 600s
+  destinationRule:
+    enabled: true
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        maxRequestsPerConnection: 10
+        h2MaxRequests: 100
+        maxRetries: 3
+        idleTimeout: 90s
+
+# Resource configuration
+resources:
+  requests:
+    cpu: 24000m
+    memory: 4Gi
+  limits:
+    cpu: 31500m
+    memory: 12Gi
+
+# Node affinity configuration
+nodeAffinity:
+  enabled: true
+  preferredNode: office-worker-8
+  required: false  # Set to true to require specific node
+
+# Autoscaling (disabled by default for single node preference)
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+# Replica count
+replicaCount: 1
+
+# Storage configuration
+persistence:
+  enabled: true
+  storageClass: longhorn
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+
+# Pod configuration
+podAnnotations:
+  sidecar.istio.io/proxyCPU: "100m"
+  sidecar.istio.io/proxyMemory: "128Mi"
+
+podSecurityContext: {}
+
+securityContext: {}
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 5001
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 5001
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Environment variables
+env:
+  # Arabic Correction Settings
+  arabic:
+    enabled: false
+    ollamaHost: "http://localhost:11434"
+    modelName: "command-r7b-arabic:latest"
+    timeout: 300
+    enableRemoteServices: false
+
+  # OCRMyPDF Preprocessing Settings
+  ocrmypdf:
+    enabled: true
+    deskew: true
+    clean: true
+    optimize: 2
+    oversample: 200
+    removeBackground: false
+    forceOcr: true
+    skipText: false
+    redoOcr: false
+    progressBar: false
+    timeout: 600
+    languageDetection: true
+    maxFileSizeMb: 200
+    failOnError: false
+    fallbackOnFailure: true
+    parallelProcessing: true
+    cleanFinal: true
+    verbosity: 1
+    progressBarFriendly: true
+    manageRootLogger: false
+
+  # Uvicorn Settings
+  uvicorn:
+    reload: false
+    host: "0.0.0.0"
+    port: 5001
+    logLevel: "info"
+    workers: 16
+
+  # Docling Serve Settings
+  doclingServe:
+    enableUi: true
+    artifactsPath: ""
+    apiHost: "0.0.0.0"
+    maxDocumentTimeout: 86400
+    maxSyncWait: 600
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Namespace configuration
+namespaceOverride: ""

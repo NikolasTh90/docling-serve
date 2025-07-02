@@ -38,7 +38,7 @@ COPY build_tesseract.sh /usr/local/bin/build_tesseract.sh
 RUN chmod +x /usr/local/bin/build_tesseract.sh
 
 # Build and install Tesseract with Arabic and Greek language support
-RUN /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell
+RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell
 
 # Copy project files
 COPY pyproject.toml ./
