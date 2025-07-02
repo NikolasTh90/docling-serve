@@ -54,11 +54,6 @@ RUN uv pip install --system -e ".[ui,tesserocr,cpu]"
 # Copy application source code
 COPY docling_serve/ ./docling_serve/
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash app && \
-    chown -R app:app /app
-USER app
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5001/health || exit 1
