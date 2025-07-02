@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   tag: "cpu"
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 resources:
   requests:
