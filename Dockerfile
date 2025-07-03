@@ -62,4 +62,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 5001
 
 # Default command
-CMD ["uv","run", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
+CMD ["python3", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
