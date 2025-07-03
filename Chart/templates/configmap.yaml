@@ -6,6 +6,9 @@ metadata:
   labels:
     {{- include "docling-serve.labels" . | nindent 4 }}
 data:
+
+  # UV Settings
+  UV_CONCURRENT_DOWNLOADS: {{ .Values.env.uv.concurrentDownloads | quote }}
   # Arabic Correction Settings
   DOCLING_ARABIC_ENABLED: {{ .Values.env.arabic.enabled | quote }}
   DOCLING_ARABIC_OLLAMA_HOST: {{ .Values.env.arabic.ollamaHost | quote }}

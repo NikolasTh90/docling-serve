@@ -57,6 +57,9 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.command.enabled }}
+          command: {{ .Values.command.value | toJson }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
@@ -64,15 +67,15 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "docling-serve.fullname" . }}-config
-          {{- if .Values.persistence.enabled }}
+            {{- if .Values.proxy.enabled }}
+            - configMapRef:
+                name: {{ include "docling-serve.fullname" . }}-proxy
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
           volumeMounts:
             - name: data-volume
               mountPath: /app/data
           {{- end }}
-          livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-          readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- if .Values.persistence.enabled }}

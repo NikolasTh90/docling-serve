@@ -1,0 +1,16 @@
+{{- if .Values.proxy.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-proxy
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+data:
+  HTTPS_PROXY: {{ .Values.proxy.httpsProxy | quote }}
+  HTTP_PROXY: {{ .Values.proxy.httpProxy | quote }}
+  NO_PROXY: {{ .Values.proxy.noProxy | quote }}
+  https_proxy: {{ .Values.proxy.httpsProxy | quote }}
+  http_proxy: {{ .Values.proxy.httpProxy | quote }}
+  no_proxy: {{ .Values.proxy.noProxy | quote }}
+{{- end }}

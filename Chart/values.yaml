@@ -13,6 +13,11 @@ image:
 imagePullSecrets:
   - name: quay-registry-secret
 
+# Container command configuration
+command:
+  enabled: true
+  value: ["uv", "run", "--extra", "ui", "docling-serve", "run", "--host", "127.0.0.1", "--port", "5001", "--enable-ui"]
+
 # Service configuration
 service:
   type: ClusterIP
@@ -25,12 +30,11 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: ocr.k8s.pxworks.co
+    - host: ocr.k8s2.pxworks.co
       paths:
         - path: /
           pathType: Prefix
   tls: []
-
 # Istio configuration
 istio:
   enabled: true
@@ -38,7 +42,7 @@ istio:
     enabled: true
     name: docling-serve-gateway
     hosts:
-      - ocr.k8s.pxworks.co
+      - ocr.k8s2.pxworks.co
     tls:
       enabled: false
       credentialName: docling-serve-tls
@@ -99,27 +103,19 @@ podSecurityContext: {}
 
 securityContext: {}
 
-# Health checks
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 5001
-  initialDelaySeconds: 60
-  periodSeconds: 30
-  timeoutSeconds: 10
-  failureThreshold: 3
 
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 5001
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
 
+# Proxy configuration
+proxy:
+  enabled: true
+  httpProxy: "http://pxw:*YXoDq728gcz_z_rAnLhh3e._7KELCH4@10.0.90.54:3128"
+  httpsProxy: "http://pxw:*YXoDq728gcz_z_rAnLhh3e._7KELCH4@10.0.90.54:3128"
+  noProxy: "localhost,169.254.169.254/32,127.0.0.1,10.0.0.0/8,192.168.0.0/16,172.16.0.0/12,.svc,.cluster.local,office-worker-1,office-worker-2,office-worker-3,office-worker-4,office-worker-5,office-worker-6,office-worker-7,office-worker-8,office-worker-9,office-worker-10,metrics-monitoring,kube-state-metrics"
 # Environment variables
 env:
+  # UV Settings
+  uv:
+    concurrentDownloads: 5
   # Arabic Correction Settings
   arabic:
     enabled: false
@@ -154,7 +150,7 @@ env:
   # Uvicorn Settings
   uvicorn:
     reload: false
-    host: "0.0.0.0"
+    host: "127.0.0.1"
     port: 5001
     logLevel: "info"
     workers: 16
@@ -163,7 +159,7 @@ env:
   doclingServe:
     enableUi: true
     artifactsPath: ""
-    apiHost: "0.0.0.0"
+    apiHost: "127.0.0.1"
     maxDocumentTimeout: 86400
     maxSyncWait: 600
 

@@ -7,11 +7,11 @@ image:
 
 resources:
   requests:
-    cpu: 15000m  # More aggressive CPU for production
-    memory: 6Gi
+    cpu: 500m  # More aggressive CPU for production
+    memory: 1Gi
   limits:
-    cpu: 26000m
-    memory: 16Gi
+    cpu: 28
+    memory: 150Gi
 
 nodeAffinity:
   enabled: true
@@ -28,6 +28,11 @@ env:
 
 # Skip namespace creation since we created it manually
 namespaceOverride: docling-serve
+
+# Proxy settings for production
+proxy:
+  enabled: true
+  # Values will inherit from main values.yaml unless overridden here
 
 # istio:
 #   gateway:
