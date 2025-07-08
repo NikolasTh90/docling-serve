@@ -23,8 +23,8 @@ persistence:
 
 env:
   uvicorn:
-    logLevel: "warning"  # Less verbose logging
-    workers: 4  # More workers for production
+    logLevel: "debug"  # Less verbose logging
+    workers: 1  # More workers for production
 
 # Skip namespace creation since we created it manually
 namespaceOverride: docling-serve
@@ -33,6 +33,9 @@ namespaceOverride: docling-serve
 proxy:
   enabled: true
   # Values will inherit from main values.yaml unless overridden here
+
+command:
+  enabled: true
 
 # istio:
 #   gateway:

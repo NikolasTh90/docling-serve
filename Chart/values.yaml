@@ -15,7 +15,7 @@ imagePullSecrets:
 
 # Container command configuration
 command:
-  enabled: true
+  enabled: false
   value: ["uv", "run", "--extra", "ui", "docling-serve", "run", "--host", "127.0.0.1", "--port", "5001", "--enable-ui"]
 
 # Service configuration
@@ -49,17 +49,17 @@ istio:
   virtualService:
     enabled: true
     timeout: 600s
-  destinationRule:
-    enabled: true
-    connectionPool:
-      tcp:
-        maxConnections: 100
-      http:
-        http1MaxPendingRequests: 50
-        maxRequestsPerConnection: 10
-        h2MaxRequests: 100
-        maxRetries: 3
-        idleTimeout: 90s
+#  destinationRule:
+#   enabled: true
+#   connectionPool:
+#     tcp:
+#       maxConnections: 1000
+#     http:
+#       http1MaxPendingRequests: 500
+#       maxRequestsPerConnection: 100
+#       h2MaxRequests: 1000
+#       maxRetries: 30
+#       idleTimeout: 90s
 
 # Resource configuration
 resources:
@@ -136,7 +136,7 @@ env:
     skipText: false
     redoOcr: false
     progressBar: false
-    timeout: 600
+    timeout: 3600
     languageDetection: true
     maxFileSizeMb: 200
     failOnError: false
@@ -161,7 +161,7 @@ env:
     artifactsPath: ""
     apiHost: "127.0.0.1"
     maxDocumentTimeout: 86400
-    maxSyncWait: 600
+    maxSyncWait: 3600
 
 # Service Account
 serviceAccount:

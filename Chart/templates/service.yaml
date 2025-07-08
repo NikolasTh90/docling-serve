@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "docling-serve.fullname" . }}
+  name: {{ include "docling-serve.fullname" . }}-service
   namespace: {{ include "docling-serve.namespace" . }}
   labels:
     {{- include "docling-serve.labels" . | nindent 4 }}

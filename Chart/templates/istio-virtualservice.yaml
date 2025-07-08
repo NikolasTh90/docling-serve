@@ -19,7 +19,7 @@ spec:
         prefix: /
     route:
     - destination:
-        host: {{ include "docling-serve.fullname" . }}
+        host: {{ include "docling-serve.fullname" . }}-service
         port:
           number: {{ .Values.service.port }}
     timeout: {{ .Values.istio.virtualService.timeout }}

@@ -48,9 +48,6 @@ spec:
                 - {{ .Values.nodeAffinity.preferredNode }}
           {{- end }}
       {{- end }}
-      serviceAccountName: {{ include "docling-serve.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
