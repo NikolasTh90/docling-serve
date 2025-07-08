@@ -1,3 +1,47 @@
+## [v0.16.1](https://github.com/docling-project/docling-serve/releases/tag/v0.16.1) - 2025-07-07
+
+### Fix
+
+* Upgrade deps including, docling v2.40.0 with locks in models init ([#264](https://github.com/docling-project/docling-serve/issues/264)) ([`bfde1a0`](https://github.com/docling-project/docling-serve/commit/bfde1a0991c2da53b72c4f131ff74fa10f6340de))
+* Missing tesseract osd ([#263](https://github.com/docling-project/docling-serve/issues/263)) ([`eb3892e`](https://github.com/docling-project/docling-serve/commit/eb3892ee141eb2c941d580b095d8a266f2d2610c))
+* Properly load models at boot ([#244](https://github.com/docling-project/docling-serve/issues/244)) ([`149a8cb`](https://github.com/docling-project/docling-serve/commit/149a8cb1c0a16c1e0b7d17f40b88b4d6e8f0109d))
+
+### Documentation
+
+* Fix typo ([#259](https://github.com/docling-project/docling-serve/issues/259)) ([`93b8471`](https://github.com/docling-project/docling-serve/commit/93b84712b2c6d180908a197847b52b217a7ff05f))
+* Change the doc example ([#258](https://github.com/docling-project/docling-serve/issues/258)) ([`c45b937`](https://github.com/docling-project/docling-serve/commit/c45b93706466a073ab4a5c75aa8a267110873e26))
+* Update typo ([#247](https://github.com/docling-project/docling-serve/issues/247)) ([`50e431f`](https://github.com/docling-project/docling-serve/commit/50e431f30fbffa33f43727417fe746d20cbb9d6b))
+
+## [v0.16.0](https://github.com/docling-project/docling-serve/releases/tag/v0.16.0) - 2025-06-25
+
+### Feature
+
+* Package updates and more cuda images ([#229](https://github.com/docling-project/docling-serve/issues/229)) ([`30aca92`](https://github.com/docling-project/docling-serve/commit/30aca92298ab0d86bb4debcfcacb2dd8b9040a27))
+
+### Documentation
+
+* Update example resources and improve README ([#231](https://github.com/docling-project/docling-serve/issues/231)) ([`80755a7`](https://github.com/docling-project/docling-serve/commit/80755a7d5955f7d0c53df8e558fdd852dd1f5b75))
+
+## [v0.15.0](https://github.com/docling-project/docling-serve/releases/tag/v0.15.0) - 2025-06-17
+
+### Feature
+
+* Use redocs and scalar as api docs ([#228](https://github.com/docling-project/docling-serve/issues/228)) ([`873d05a`](https://github.com/docling-project/docling-serve/commit/873d05aefe141c63b9c1cf53b23b4fa8c96de05d))
+
+### Fix
+
+* "tesserocr" instead of "tesseract_cli" in usage docs ([#223](https://github.com/docling-project/docling-serve/issues/223)) ([`196c5ce`](https://github.com/docling-project/docling-serve/commit/196c5ce42a04d77234a4212c3d9b9772d2c2073e))
+
+## [v0.14.0](https://github.com/docling-project/docling-serve/releases/tag/v0.14.0) - 2025-06-17
+
+### Feature
+
+* Read supported file extensions from docling ([#214](https://github.com/docling-project/docling-serve/issues/214)) ([`524f6a8`](https://github.com/docling-project/docling-serve/commit/524f6a8997b86d2f869ca491ec8fb40585b42ca4))
+
+### Fix
+
+* Typo in Headline ([#220](https://github.com/docling-project/docling-serve/issues/220)) ([`d5455b7`](https://github.com/docling-project/docling-serve/commit/d5455b7f66de39ea1f8b8927b5968d2baa23ca88))
+
 ## [v0.13.0](https://github.com/docling-project/docling-serve/releases/tag/v0.13.0) - 2025-06-04
 
 ### Feature

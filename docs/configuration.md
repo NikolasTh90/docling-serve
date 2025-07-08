@@ -7,7 +7,7 @@ server and the actual app-specific configurations.
 
  > [!WARNING]
 > When the server is running with `reload` or with multiple `workers`, uvicorn
-> will spawn multiple subprocessed. This invalides all the values configured
+> will spawn multiple subprocessed. This invalidates all the values configured
 > via the CLI command line options. Please use environment variables in this
 > type of deployments.
 
@@ -47,6 +47,7 @@ THe following table describes the options to configure the Docling Serve app.
 |  | `DOCLING_SERVE_MAX_NUM_PAGES` |  | The maximum number of pages for a document to be processed. |
 |  | `DOCLING_SERVE_MAX_FILE_SIZE` |  | The maximum file size for a document to be processed. |
 |  | `DOCLING_SERVE_MAX_SYNC_WAIT` | `120` | Max number of seconds a synchronous endpoint is waiting for the task completion. |
+|  | `DOCLING_SERVE_LOAD_MODELS_AT_BOOT` | `True` | If enabled, the models for the default options will be loaded at boot. |
 |  | `DOCLING_SERVE_OPTIONS_CACHE_SIZE` | `2` | How many DocumentConveter objects (including their loaded models) to keep in the cache. |
 |  | `DOCLING_SERVE_CORS_ORIGINS` | `["*"]` | A list of origins that should be permitted to make cross-origin requests. |
 |  | `DOCLING_SERVE_CORS_METHODS` | `["*"]` | A list of HTTP methods that should be allowed for cross-origin requests. |
@@ -60,7 +61,7 @@ The selected compute engine will be running all the async jobs.
 
 #### Local engine
 
-The following table describes the options to configure the Docling Serve KFP engine.
+The following table describes the options to configure the Docling Serve local engine.
 
 | ENV | Default | Description |
 |-----|---------|-------------|

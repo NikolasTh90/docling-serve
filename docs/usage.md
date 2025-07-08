@@ -13,13 +13,13 @@ On top of the source of file (see below), both endpoints support the same parame
 - `do_ocr` (bool): If enabled, the bitmap content will be processed using OCR. Defaults to `True`.
 - `image_export_mode`: Image export mode for the document (only in case of JSON, Markdown or HTML). Allowed values: embedded, placeholder, referenced. Optional, defaults to `embedded`.
 - `force_ocr` (bool): If enabled, replace any existing text with OCR-generated text over the full content. Defaults to `False`.
-- `ocr_engine` (str): OCR engine to use. Allowed values: `easyocr`, `tesseract_cli`, `tesseract`, `rapidocr`, `ocrmac`. Defaults to `easyocr`.
+- `ocr_engine` (str): OCR engine to use. Allowed values: `easyocr`, `tesserocr`, `tesseract`, `rapidocr`, `ocrmac`. Defaults to `easyocr`. To use the `tesserocr` engine, `tesserocr` must be installed where docling-serve is running: `pip install tesserocr`
 - `ocr_lang` (List[str]): List of languages used by the OCR engine. Note that each OCR engine has different values for the language names. Defaults to empty.
 - `pdf_backend` (str): PDF backend to use. Allowed values: `pypdfium2`, `dlparse_v1`, `dlparse_v2`, `dlparse_v4`. Defaults to `dlparse_v4`.
 - `table_mode` (str): Table mode to use. Allowed values: `fast`, `accurate`. Defaults to `fast`.
 - `abort_on_error` (bool): If enabled, abort on error. Defaults to false.
 - `return_as_file` (boo): If enabled, return the output as a file. Defaults to false.
-- `md_page_break_placeholder` (str): Add this placeholder betweek pages in the markdown output.
+- `md_page_break_placeholder` (str): Add this placeholder between pages in the markdown output.
 - `do_table_structure` (bool): If enabled, the table structure will be extracted. Defaults to true.
 - `do_code_enrichment` (bool): If enabled, perform OCR code enrichment. Defaults to false.
 - `do_formula_enrichment` (bool): If enabled, perform formula OCR, return LaTeX code. Defaults to false.
@@ -288,33 +288,42 @@ The api option is specified with:
 
 Example URLs are:
 
-- `http://localhost:8000/v1/chat/completions` for the local vllm api, with example `params`:
+- `http://localhost:8000/v1/chat/completions` for the local vllm api, with example `picture_description_api`:
   - the `HuggingFaceTB/SmolVLM-256M-Instruct` model
 
     ```json
     {
+      "url": "http://localhost:8000/v1/chat/completions",
+      "params": {
         "model": "HuggingFaceTB/SmolVLM-256M-Instruct",
         "max_completion_tokens": 200,
+      }
     }
     ```
-  
+
   - the `ibm-granite/granite-vision-3.2-2b` model
 
     ```json
     {
+      "url": "http://localhost:8000/v1/chat/completions",
+      "params": {
         "model": "ibm-granite/granite-vision-3.2-2b",
         "max_completion_tokens": 200,
+      }
     }
     ```
 
-- `http://localhost:11434/v1/chat/completions` for the local ollama api, with example `params`:
+- `http://localhost:11434/v1/chat/completions` for the local ollama api, with example `picture_description_api`:
   - the `granite3.2-vision:2b` model
 
     ```json
     {
+      "url": "http://localhost:11434/v1/chat/completions",
+      "params": {
         "model": "granite3.2-vision:2b"
+      }
     }
-    ```  
+    ```
 
 Note that when using `picture_description_api`, the server must be launched with `DOCLING_SERVE_ENABLE_REMOTE_SERVICES=true`.
 

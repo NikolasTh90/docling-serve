@@ -17,7 +17,7 @@ import httpx
 from docling.datamodel.base_models import FormatToExtensions
 from docling.datamodel.pipeline_options import (
     PdfBackend,
-    PdfPipeline,
+    ProcessingPipeline,
     TableFormerMode,
     TableStructureOptions,
 )
@@ -1336,9 +1336,9 @@ with gr.Blocks(
         with gr.Row():
             with gr.Column(scale=1, min_width=200):
                 pipeline = gr.Radio(
-                    [(v.value.capitalize(), v.value) for v in PdfPipeline],
+                    [(v.value.capitalize(), v.value) for v in ProcessingPipeline],
                     label="Pipeline type",
-                    value=PdfPipeline.STANDARD.value,
+                    value=ProcessingPipeline.STANDARD.value,
                 )
         with gr.Row():
             with gr.Column(scale=1, min_width=200):
