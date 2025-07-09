@@ -1,0 +1,20 @@
+--- tesseract_ocr_cli_model_original.py	2025-07-08 14:53:19.084857776 +0300
++++ tesseract_ocr_cli_model_patched.py	2025-07-08 14:53:58.910521387 +0300
+@@ -267,6 +267,17 @@
+                                     exc.stderr,
+                                 )
+                                 continue
++                            except UnboundLocalError as exc:
++                                _log.error(
++                                    "UnboundLocalError in tesseract OCR (doc %s, page: %s, "
++                                    "OCR rectangle: %s, processed image file %s): %s",
++                                    conv_res.input.file,
++                                    page_i,
++                                    ocr_rect_i,
++                                    image_file,
++                                    exc,
++                                )
++                                continue
+                         finally:
+                             if os.path.exists(fname):
+                                 os.remove(fname)

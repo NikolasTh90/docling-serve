@@ -1,14 +1,9 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies required by build_tesseract.sh
+# Section 1: OCR Setup
+# Install build tools & libs
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -31,35 +26,95 @@ RUN apt-get update && apt-get install -y \
     curl \
     wget \
     sudo \
-    && rm -rf /var/lib/apt/lists/*
+    unpaper \
+    vim \
+    autotools-dev \
+    automake \
+    libtool \
+    libleptonica-dev \
+    pkg-config \
+    python3 \
+    python3-pip
 
 # Copy build script and make it executable
 COPY build_tesseract.sh /usr/local/bin/build_tesseract.sh
 RUN chmod +x /usr/local/bin/build_tesseract.sh
 
 # Build and install Tesseract with Arabic and Greek language support
-RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell
+RUN echo y | /usr/local/bin/build_tesseract.sh -v 5.5.1 -l eng,ara,ell --jobs 12
 
-# Copy project files
-COPY pyproject.toml ./
-COPY README.md ./
 
+# Install GNU Autoconf ≥2.72 from source (so jbig2enc’s autogen works)
+RUN apt-get update && apt-get install -y wget \
+ && wget https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz \
+ && tar xzf autoconf-2.72.tar.gz \
+ && cd autoconf-2.72 \
+ && ./configure --prefix=/usr/local \
+ && make -j$(nproc) \
+ && make install \
+ && cd .. \
+ && rm -rf autoconf-2.72* autoconf-2.72.tar.gz
+
+# Install jbig2 encoder
+RUN  git clone https://github.com/agl/jbig2enc.git \
+    && cd jbig2enc \
+    && ./autogen.sh \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -rf jbig2enc
+
+# Install Ghostscript from source
+RUN curl -L https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10051/ghostscript-10.05.1.tar.gz | tar xz \
+ && cd ghostscript-10.05.1 \
+ && ./configure --without-x \
+ && make -j$(nproc) \
+ && make install \
+ && cd .. \
+ && rm -rf ghostscript-10.05.1
+
+# Install Rust toolchain
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Fetch pngquant source
+RUN git clone --recursive https://github.com/kornelski/pngquant.git /tmp/pngquant
+
+# Compile pngquant with Rust and lcms2
+RUN cd /tmp/pngquant \
+    && cargo build --release --features=lcms2
+
+# Install pngquant binary & cleanup
+RUN install -m755 /tmp/pngquant/target/release/pngquant /usr/local/bin/ \
+    && rm -rf /tmp/pngquant ~/.cargo
 # Install UV package manager for faster dependency resolution
+RUN pip install --upgrade setuptools[core]
 RUN pip install uv
 
-# Install Python dependencies
-# Install with UI support and tesserocr for better OCR integration
-RUN uv pip install --system -e ".[ui,tesserocr,cpu]"
-
-# Copy application source code
-COPY docling_serve/ ./docling_serve/
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:5001/health || exit 1
+# Set Tesseract data path
+ENV TESSDATA_PREFIX="/usr/local/share/tessdata/"
 
 # Expose port
 EXPOSE 5001
 
-# Default command
-CMD ["python3", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
+# OPTIMIZATION: First copy only pyproject.toml and install dependencies
+COPY pyproject.toml /app/
+# Create a proper virtual environment and activate it
+RUN uv venv /app/.venv
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install dependencies into the virtual environment
+RUN uv sync --extra ui
+
+RUN apt install patch -y
+# Apply fix for UnboundLocalError in docling tesseract OCR
+# TODO: Remove this patch when upstream issue is fixed
+COPY patches/tesseract_ocr_cli_model/tesseract_unbound_fix.patch /tmp/
+RUN patch /app/.venv/lib/python3.11/site-packages/docling/models/tesseract_ocr_cli_model.py < /tmp/tesseract_unbound_fix.patch \
+    && rm /tmp/tesseract_unbound_fix.patch
+
+COPY . /app
+
+CMD ["/app/.venv/bin/python3", "/app/.venv/bin/docling-serve", "run"]

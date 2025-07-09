@@ -98,12 +98,6 @@ ENV TESSDATA_PREFIX="/usr/local/share/tessdata/"
 # Expose port
 EXPOSE 5001
 
-# # Section 2: Ollama Setup
-# RUN curl -fsSL https://ollama.com/install.sh | sh
-# ENV OLLAMA_HOST=0.0.0.0:11434
-# ENV OLLAMA_MODELS=/workspace/models
-# EXPOSE 11434
-
 # OPTIMIZATION: First copy only pyproject.toml and install dependencies
 COPY pyproject.toml /app/
 # Create a proper virtual environment and activate it
@@ -114,7 +108,15 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Install dependencies into the virtual environment
 RUN uv sync --extra ui
 
+RUN apt install patch -y
+# Apply fix for UnboundLocalError in docling tesseract OCR
+# TODO: Remove this patch when upstream issue is fixed
+COPY patches/tesseract_ocr_cli_model/tesseract_unbound_fix.patch /tmp/
+RUN patch /app/.venv/lib/python3.11/site-packages/docling/models/tesseract_ocr_cli_model.py < /tmp/tesseract_unbound_fix.patch \
+    && rm /tmp/tesseract_unbound_fix.patch
+
 COPY . /app
 
-CMD ["docling-serve", "run", "--host", "127.0.0.1", "--port", "5001", "--enable-ui"]
+RUN uv sync --extra ui
 
+CMD ["/app/.venv/bin/python3", "/app/.venv/bin/docling-serve", "run"]
