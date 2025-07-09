@@ -117,4 +117,4 @@ RUN patch /app/.venv/lib/python3.11/site-packages/docling/models/tesseract_ocr_c
 
 COPY . /app
 
-CMD ["/app/.venv/bin/python3", "/app/.venv/bin/docling-serve", "run"]
+CMD ["uv", "run", "docling-serve", "run"]
