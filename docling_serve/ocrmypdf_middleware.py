@@ -106,6 +106,7 @@ class OCRMyPDFMiddleware:
             use_deskew = deskew if deskew is not None else self.settings.deskew
             use_clean = clean if clean is not None else self.settings.clean
             use_remove_background = self.settings.remove_background
+            use_clean_final = self.settings.clean_final
             
             # Create temporary files
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as input_temp:
@@ -117,9 +118,9 @@ class OCRMyPDFMiddleware:
                 output_path = Path(output_temp.name)
                 
             try:
-                # Use the provided OCR mode from PDF analysis, or default to 'force'
+                # Use the provided OCR mode, or default to 'force'
                 if ocr_mode is None:
-                    ocr_mode = 'force'  # Keep this as fallback
+                    ocr_mode = 'force'
                     self.logger.info(f"No OCR mode specified, defaulting to 'force' for {filename}")
                 else:
                     self.logger.info(f"Using recommended OCR mode: {ocr_mode} for {filename}")
@@ -127,16 +128,25 @@ class OCRMyPDFMiddleware:
                 # Set OCR parameters based on mode
                 use_force_ocr = ocr_mode == 'force'
                 use_redo_ocr = ocr_mode == 'redo'
+                use_skip_text = ocr_mode == 'skip'
                 
-                # Handle OCRMyPDF parameter conflicts
-                if use_redo_ocr and (use_deskew or use_clean or use_remove_background):
-                    self.logger.warning("redo_ocr conflicts with deskew/clean/remove_background. Prioritizing preprocessing options.")
-                    use_redo_ocr = False
-                    # If we were going to use redo-ocr but can't due to preprocessing options,
-                    # switch to force-ocr
-                    if ocr_mode == 'redo':
-                        use_force_ocr = True
-                
+                # For redo mode, disable conflicting preprocessing options
+                if use_redo_ocr:
+                    # redo_ocr cannot be used with deskew, clean_final, or remove_background
+                    conflicts = []
+                    if use_deskew:
+                        conflicts.append('deskew')
+                        use_deskew = False
+                    if use_clean_final:
+                        conflicts.append('clean_final')
+                        use_clean_final = False
+                    if use_remove_background:
+                        conflicts.append('remove_background')
+                        use_remove_background = False
+
+                    if conflicts:
+                        self.logger.warning(f"redo_ocr mode conflicts with {', '.join(conflicts)}. Disabling these options for {filename}")
+
                 # Convert language codes to Tesseract format
                 tesseract_languages = convert_to_tesseract_codes(ocr_languages, self.logger)
                 
@@ -146,13 +156,13 @@ class OCRMyPDFMiddleware:
                     'output_file': output_path,
                     'deskew': use_deskew,
                     'clean': use_clean,
-                    'clean_final': self.settings.clean_final,
+                    'clean_final': use_clean_final,
                     'optimize': self.settings.optimize,
                     'color_conversion_strategy': self.settings.color_conversion_strategy,
                     'oversample': self.settings.oversample,
                     'remove_background': use_remove_background,
                     'force_ocr': use_force_ocr,
-                    'skip_text': self.settings.skip_text,
+                    'skip_text': use_skip_text,
                     'redo_ocr': use_redo_ocr,
                     'progress_bar': self.settings.progress_bar,
                     'jobs': self.settings.max_workers,
@@ -160,18 +170,17 @@ class OCRMyPDFMiddleware:
                     'pdf_renderer': self.settings.pdf_renderer,
                     'output_type': self.settings.output_type,
                     'tesseract_oem': self.settings.tesseract_oem_mode
-
                 }
 
-                # Add language specification if provided
-                if tesseract_languages:
+                # Add language specification if provided (but not needed for skip mode)
+                if tesseract_languages and not use_skip_text:
                     ocrmypdf_args['language'] = tesseract_languages
                     self.logger.info(f"Using OCRMyPDF with languages: {tesseract_languages}")
-                
+                    
                 # Log the final configuration for debugging
                 self.logger.debug(f"OCRMyPDF config: mode={ocr_mode}, deskew={use_deskew}, clean={use_clean}, "
-                                f"remove_background={use_remove_background}, redo_ocr={use_redo_ocr}, "
-                                f"force_ocr={use_force_ocr}")
+                                f"clean_final={use_clean_final}, remove_background={use_remove_background}, "
+                                f"redo_ocr={use_redo_ocr}, force_ocr={use_force_ocr}, skip_text={use_skip_text}")
                 
                 # Run OCRMyPDF directly without custom timeout
                 result = ocrmypdf.ocr(**ocrmypdf_args)
