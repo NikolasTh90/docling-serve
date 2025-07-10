@@ -183,9 +183,7 @@ class AsyncLocalWorker:
                                     ocrmypdf_clean = getattr(task.options, 'ocrmypdf_clean', True)
                                     ocr_languages = getattr(task.options, 'ocr_lang', None)
                                     
-                                    # Use the recommended mode from PDF analysis
-                                    ocr_mode_to_use = recommended_ocr_mode if recommended_ocr_mode != 'skip' else 'force'
-                                    
+                                                                      
                                     # Apply preprocessing with the recommended mode
                                     processed_stream = ocrmypdf_middleware.preprocess_file(
                                         source.stream,
@@ -193,7 +191,7 @@ class AsyncLocalWorker:
                                         deskew=ocrmypdf_deskew,
                                         clean=ocrmypdf_clean,
                                         ocr_languages=ocr_languages,
-                                        ocr_mode=ocr_mode_to_use
+                                        ocr_mode=recommended_ocr_mode
                                     )
                                     
                                     # Reset stream position and create new DocumentStream
