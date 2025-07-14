@@ -53,7 +53,6 @@ except ImportError as e:
 
 _log = logging.getLogger(__name__)
 
-
 class AsyncLocalWorker:
     def __init__(self, worker_id: int, orchestrator: "AsyncLocalOrchestrator"):
         self.worker_id = worker_id
@@ -99,6 +98,7 @@ class AsyncLocalWorker:
                     pdf_analysis_performed = False
                     recommended_ocr_mode = None  # Store the recommended mode for OCRMyPDF
                     ai_vision_triggered = False
+                    pdf_analysis_results = None  # Store full analysis results for BiDi processing
                     
                     for source in convert_sources:
                         if isinstance(source, DocumentStream) and should_analyze_file_for_force_ocr(source.name):
@@ -114,6 +114,7 @@ class AsyncLocalWorker:
                                 try:
                                     # Get full PDF analysis results
                                     analysis_results = analyze_pdf(temp_path)
+                                    pdf_analysis_results = analysis_results  # Store for BiDi processing
                                     recommended_ocr_mode = analysis_results['recommended_mode']
                                     
                                     # Check if AI Vision should be triggered
@@ -231,7 +232,7 @@ class AsyncLocalWorker:
                         conv_results=results,
                         work_dir=work_dir,
                     )
-                    _log.info(f"Task {task_id} completed with response: {response}")
+                    _log.info(f"Task {task_id} completed with response: {str(response):100}")
                     
                     # Apply Arabic correction if enabled and requested
                     enable_arabic_correction = getattr(task.options, 'enable_arabic_correction', False)
@@ -248,7 +249,12 @@ class AsyncLocalWorker:
                     if enable_bidi_processing:
                         try:
                             _log.info(f"Applying BiDi text processing for task {task_id}")
-                            response = bidi_processor.process_conversion_result(response)
+                            # Pass PDF analysis results to BiDi processor for smarter decisions
+                            response = bidi_processor.process_conversion_result(
+                                response, 
+                                task_info=task, 
+                                pdf_analysis_results=pdf_analysis_results
+                            )
                             _log.info(f"BiDi processing completed for task {task_id}")
                         except Exception as e:
                             _log.error(f"BiDi processing failed for task {task_id}: {e}", exc_info=True)

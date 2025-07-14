@@ -6,9 +6,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.gpu
-      args:
-        - BUILDKIT_PROGRESS=plain
-    image: quay.io/nikolas/docling-serve:gpu
+      # args:
+      #   - BUILDKIT_PROGRESS=plain
+    image: quay.io/pxworks/docling-serve:gpu
     container_name: docling-serve-gpu
     ports:
       - "5001:5001"
@@ -18,16 +18,16 @@ services:
       # - .:/app
 
     # Use conditional command based on dev mode
-    command: >
-      sh -c "
-        if [ \"$$DOCLING_DEV_MODE\" = \"true\" ]; then
-          echo 'Starting in development mode...';
-          uv run --python .venv/bin/python --extra ui --extra cu124 docling-serve dev --host 0.0.0.0 --port 5001 --enable-ui;
-        else
-          echo 'Starting in production mode...';
-          uv run --python .venv/bin/python --extra ui --extra cu124 docling-serve run --host 0.0.0.0 --port 5001 --enable-ui;
-        fi
-      "
+    # command: >
+    #   sh -c "
+    #     if [ \"$$DOCLING_DEV_MODE\" = \"true\" ]; then
+    #       echo 'Starting in development mode...';
+    #       uv run --python .venv/bin/python --extra ui --extra cu124 docling-serve dev --host 0.0.0.0 --port 5001 --enable-ui;
+    #     else
+    #       echo 'Starting in production mode...';
+    #       uv run --python .venv/bin/python --extra ui --extra cu124 docling-serve run --host 0.0.0.0 --port 5001 --enable-ui;
+    #     fi
+      # "
     
     deploy:
       resources:
