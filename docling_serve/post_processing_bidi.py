@@ -194,6 +194,8 @@ class BiDiProcessor:
             if is_tagged:
                 self.logger.info("PDF analysis indicates document is tagged")
                 return True
+            else:
+                return False
             
             if text_quality == 'good':
                 self.logger.info("PDF analysis indicates good text quality, likely well-structured")
