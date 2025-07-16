@@ -74,13 +74,19 @@ spec:
             - configMapRef:
                 name: {{ include "docling-serve.fullname" . }}-proxy
           {{- end }}
-      {{- if .Values.persistence.enabled }}
+          resources:
+            {{- if .Values.resources }}
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+            {{- if .Values.gpu.enabled }}
+            limits:
+              nvidia.com/gpu: {{ .Values.gpu.count }}
+      {{- end }}
+          {{- if .Values.persistence.enabled }}
           volumeMounts:
             - name: data-volume
               mountPath: /app/data
-
           {{- end }}
-
       {{- if .Values.persistence.enabled }}
       volumes:
         - name: data-volume

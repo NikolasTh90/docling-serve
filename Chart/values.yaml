@@ -3,6 +3,11 @@ global:
   nameOverride: ""
   fullnameOverride: ""
 
+# GPU configuration
+gpu:
+  enabled: false
+  count: 1 # Use all available GPUs on the node
+
 # Image configuration
 image:
   repository: quay.io/pxworks/docling-serve
@@ -44,6 +49,7 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
+
 # Istio configuration
 istio:
   enabled: true
@@ -101,14 +107,13 @@ podSecurityContext: {}
 
 securityContext: {}
 
-
-
 # Proxy configuration
 proxy:
   enabled: true
   httpProxy: "http://pxw:*YXoDq728gcz_z_rAnLhh3e._7KELCH4@10.0.90.54:3128"
   httpsProxy: "http://pxw:*YXoDq728gcz_z_rAnLhh3e._7KELCH4@10.0.90.54:3128"
   noProxy: "localhost,169.254.169.254/32,127.0.0.1,10.0.0.0/8,192.168.0.0/16,172.16.0.0/12,.svc,.cluster.local,office-worker-1,office-worker-2,office-worker-3,office-worker-4,office-worker-5,office-worker-6,office-worker-7,office-worker-8,office-worker-9,office-worker-10,metrics-monitoring,kube-state-metrics"
+
 # Environment variables
 env:
   # UV Settings

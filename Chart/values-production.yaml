@@ -1,6 +1,11 @@
 # Production overrides
 replicaCount: 1
 
+# Enable GPU for production - use all available GPUs
+gpu:
+  enabled: true
+  count: 1  # This tells Kubernetes to allocate all available GPUs
+
 image:
   tag: "gpu"
   pullPolicy: Always

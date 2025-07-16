@@ -199,6 +199,8 @@ class BiDiProcessor:
                 self.logger.info("PDF analysis indicates good text quality, likely well-structured")
                 return True
         
+        self.logger.info("PDF Analysis results were not found, falling back to directional attributes recognition.")
+        
         # Fallback to content analysis
         # Check for HTML directional attributes
         html_dir_pattern = re.compile(r'dir\s*=\s*["\']?(rtl|ltr)["\']?', re.IGNORECASE)
