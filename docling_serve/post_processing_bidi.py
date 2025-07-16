@@ -117,13 +117,13 @@ class MarkdownProcessor:
                 return False
         
         # Check if content already has directional markup
-        if self.has_directional_marks:
-            logger.info("Content already has Unicode directional marks, skipping BiDi processing")
-            return False
+        # if self.has_directional_marks:
+        #     logger.info("Content already has Unicode directional marks, skipping BiDi processing")
+        #     return False
         
-        if self.has_html_dir_tags:
-            logger.info("Content already has HTML dir attributes, skipping BiDi processing")
-            return False
+        # if self.has_html_dir_tags:
+        #     logger.info("Content already has HTML dir attributes, skipping BiDi processing")
+        #     return False
         
         # Fallback to content analysis
         needs_bidi = self.rtl_lines_count > 0
