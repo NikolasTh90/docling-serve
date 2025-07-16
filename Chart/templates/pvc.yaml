@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "docling-serve.fullname" . }}-data
+  name: {{ include "docling-serve.fullname" . }}-data-pvc
   namespace: {{ include "docling-serve.namespace" . }}
   labels:
     {{- include "docling-serve.labels" . | nindent 4 }}

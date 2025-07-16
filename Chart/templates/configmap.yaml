@@ -50,6 +50,6 @@ data:
   # Docling Serve Settings
   DOCLING_SERVE_ENABLE_UI: {{ .Values.env.doclingServe.enableUi | quote }}
   DOCLING_SERVE_ARTIFACTS_PATH: {{ .Values.env.doclingServe.artifactsPath | quote }}
-  DOCLING_SERVE_API_HOST: {{ .Values.env.doclingServe.apiHost | quote }}
+  DOCLING_SERVE_API_HOST: {{ include "docling-serve.fullname" . }}.{{ include "docling-serve.namespace" . }}.svc.cluster.local
   DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT: {{ .Values.env.doclingServe.maxDocumentTimeout | quote }}
   DOCLING_SERVE_MAX_SYNC_WAIT: {{ .Values.env.doclingServe.maxSyncWait | quote }}

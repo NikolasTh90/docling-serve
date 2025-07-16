@@ -6,17 +6,26 @@ global:
 # Image configuration
 image:
   repository: quay.io/pxworks/docling-serve
-  tag: cpu
+  tag: gpu
   pullPolicy: IfNotPresent
 
 # Image pull secrets for private repositories
 imagePullSecrets:
   - name: quay-registry-secret
 
+# Pull Secret configuration
+pullSecret:
+  create: false
+  name: ""
+  annotations: {}
+  # Base64 encoded .dockerconfigjson content
+  # Example: {"auths":{"quay.io":{"auth":"<base64-encoded-username:password>","email":""}}}
+  dockerconfigjson: ""
+
 # Container command configuration
 command:
-  enabled: false
-  value: ["uv", "run", "--extra", "ui", "docling-serve", "run", "--host", "127.0.0.1", "--port", "5001", "--enable-ui"]
+  enabled: true
+  value: ["uv", "run", "--extra", "ui", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
 
 # Service configuration
 service:
@@ -49,17 +58,6 @@ istio:
   virtualService:
     enabled: true
     timeout: 600s
-#  destinationRule:
-#   enabled: true
-#   connectionPool:
-#     tcp:
-#       maxConnections: 1000
-#     http:
-#       http1MaxPendingRequests: 500
-#       maxRequestsPerConnection: 100
-#       h2MaxRequests: 1000
-#       maxRetries: 30
-#       idleTimeout: 90s
 
 # Resource configuration
 resources:
@@ -90,7 +88,7 @@ replicaCount: 1
 persistence:
   enabled: true
   storageClass: longhorn
-  accessMode: ReadWriteOnce
+  accessMode: ReadWriteMany
   size: 10Gi
   annotations: {}
 
@@ -115,13 +113,13 @@ proxy:
 env:
   # UV Settings
   uv:
-    concurrentDownloads: 5
+    concurrentDownloads: 50
   # Arabic Correction Settings
   arabic:
     enabled: false
     ollamaHost: "http://localhost:11434"
     modelName: "command-r7b-arabic:latest"
-    timeout: 300
+    timeout: 1800
     enableRemoteServices: false
 
   # OCRMyPDF Preprocessing Settings
@@ -136,21 +134,21 @@ env:
     skipText: false
     redoOcr: false
     progressBar: false
-    timeout: 3600
+    timeout: 1800
     languageDetection: true
     maxFileSizeMb: 200
     failOnError: false
     fallbackOnFailure: true
     parallelProcessing: true
     cleanFinal: true
-    verbosity: 1
+    verbosity: 0
     progressBarFriendly: true
     manageRootLogger: false
 
   # Uvicorn Settings
   uvicorn:
     reload: false
-    host: "127.0.0.1"
+    host: "0.0.0.0"
     port: 5001
     logLevel: "info"
     workers: 16
@@ -159,9 +157,9 @@ env:
   doclingServe:
     enableUi: true
     artifactsPath: ""
-    apiHost: "127.0.0.1"
+    apiHost: "0.0.0.0"
     maxDocumentTimeout: 86400
-    maxSyncWait: 3600
+    maxSyncWait: 1800
 
 # Service Account
 serviceAccount:

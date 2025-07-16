@@ -16,7 +16,11 @@ spec:
       protocol: HTTP
     hosts:
     {{- range .Values.istio.gateway.hosts }}
-    - {{ . }}
+    - {{ . | quote }}
+    {{- end }}
+    {{- if not .Values.istio.gateway.tls.enabled }}
+    tls:
+      httpsRedirect: false
     {{- end }}
   {{- if .Values.istio.gateway.tls.enabled }}
   - port:
@@ -28,7 +32,7 @@ spec:
       credentialName: {{ .Values.istio.gateway.tls.credentialName }}
     hosts:
     {{- range .Values.istio.gateway.hosts }}
-    - {{ . }}
+    - {{ . | quote }}
     {{- end }}
   {{- end }}
 {{- end }}

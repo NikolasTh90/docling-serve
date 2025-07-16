@@ -2,7 +2,7 @@
 replicaCount: 1
 
 image:
-  tag: "cpu"
+  tag: "gpu"
   pullPolicy: Always
 
 resources:
@@ -34,11 +34,24 @@ proxy:
   enabled: true
   # Values will inherit from main values.yaml unless overridden here
 
-command:
-  enabled: true
-
 # istio:
 #   gateway:
 #     tls:
 #       enabled: true
 #       credentialName: ocr-tls-secret
+pullSecret:
+  create: true
+  name: docling-serve-pull-secret
+  dockerconfigjson: |
+    {
+      "auths": {
+        "quay.io": {
+          "auth": "cHh3b3JrcytweHdfaHR6X2s4c19jbHVzdGVyOkxZTkpaOVNYUExXQlNXU0E3NTJXTDBZOTMxNTdPUUI4QThKN1lDUE43OEVIN0pUOTVPWDVCVlo5WVBYQUxUMTQ=",
+          "email": ""
+        }
+      }
+    }
+
+command:
+  enabled: false
+  value: ["uv", "run", "--extra", "ui", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]

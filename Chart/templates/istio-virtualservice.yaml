@@ -9,18 +9,18 @@ metadata:
 spec:
   hosts:
   {{- range .Values.istio.gateway.hosts }}
-  - {{ . }}
+  - {{ . | quote }}
   {{- end }}
   gateways:
   - {{ .Values.istio.gateway.name | default (printf "%s-gateway" (include "docling-serve.fullname" .)) }}
   http:
   - match:
     - uri:
-        prefix: /
+        prefix: "/"
     route:
     - destination:
-        host: {{ include "docling-serve.fullname" . }}-service
+        host: {{ include "docling-serve.fullname" . }}.{{ include "docling-serve.namespace" . }}.svc.cluster.local
         port:
           number: {{ .Values.service.port }}
-    timeout: {{ .Values.istio.virtualService.timeout }}
+
 {{- end }}
