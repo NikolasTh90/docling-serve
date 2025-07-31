@@ -44,7 +44,7 @@ class TranslationService:
             
         try:
             # Use first 1000 chars for detection, skip markdown headers and formatting
-            sample_text = self._clean_text_for_detection(text[:1000])
+            sample_text = self._clean_text_for_detection(text[:10000])
             
             result = self.api.detect(sample_text)
             
