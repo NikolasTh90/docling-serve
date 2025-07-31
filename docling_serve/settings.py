@@ -114,3 +114,11 @@ except ImportError as e:
     import logging
     logging.getLogger(__name__).warning(f"AI Vision settings not available: {e}")
     ai_vision_settings = None
+
+try:
+    from docling_serve.translation.settings import TranslationSettings
+    translation_settings = TranslationSettings()
+except ImportError:
+    # Fallback if Translation settings not available
+    logging.getLogger(__name__).warning(f"Translation settings not available: {e}")
+    translation_settings = None

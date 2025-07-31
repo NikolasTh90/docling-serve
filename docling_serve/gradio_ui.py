@@ -47,6 +47,13 @@ except ImportError:
     # Fallback if AI Vision settings not available
     ai_vision_settings = None
 
+try:
+    from docling_serve.translation.settings import TranslationSettings
+    translation_settings = TranslationSettings()
+except ImportError:
+    # Fallback if Translation settings not available
+    translation_settings = None
+
 from docling_serve.config import get_ocrmypdf_config
 logger = logging.getLogger(__name__)
         
@@ -471,6 +478,114 @@ def validate_ai_vision_environment():
 
     return validation_result
 
+def get_translation_config():
+    """Get Translation configuration for display."""
+    if translation_settings:
+        # Check what attributes are actually available in translation_settings
+        config = {
+            "enabled": translation_settings.enabled,
+            "host": translation_settings.libretranslate_host,
+        }
+        
+        # Add optional attributes if they exist
+        if hasattr(translation_settings, 'api_key'):
+            config["api_key"] = translation_settings.api_key
+        else:
+            config["api_key"] = ""
+            
+        if hasattr(translation_settings, 'target_language'):
+            config["target_language"] = translation_settings.target_language
+        else:
+            config["target_language"] = "en"  # default fallback
+            
+        return config
+    else:
+        return {
+            "enabled": os.getenv("DOCLING_TRANSLATION_ENABLED", "false").lower() == "true",
+            "host": os.getenv("DOCLING_TRANSLATION_LIBRETRANSLATE_HOST", "http://localhost:5000"),
+            "api_key": os.getenv("DOCLING_TRANSLATION_API_KEY", ""),
+            "target_language": os.getenv("DOCLING_TRANSLATION_TARGET_LANGUAGE", "en"),
+        }
+def validate_translation_environment():
+    """Validate Translation environment configuration."""
+    logger.debug("→ Enter validate_translation_environment")
+    issues = []
+    warnings = []
+    config = get_translation_config()
+    logger.debug("Config loaded: %s", config)
+
+    # If disabled, skip all checks
+    if not config["enabled"]:
+        logger.debug("Translation is disabled via configuration")
+        return {
+            "issues": [],
+            "warnings": ["Translation is disabled via configuration"],
+            "status": "disabled",
+        }
+
+    # Check LibreTranslate connectivity
+    try:
+        import requests
+        health_url = f"{config['host']}/languages"
+        logger.debug("Pinging LibreTranslate endpoint: %s", health_url)
+        
+        headers = {}
+        if config.get("api_key"):
+            headers["Authorization"] = f"Bearer {config['api_key']}"
+        
+        resp = requests.get(health_url, headers=headers, timeout=10)
+        logger.debug("Health check response code: %s", resp.status_code)
+
+        if resp.status_code != 200:
+            issues.append(f"LibreTranslate service at {config['host']} returned {resp.status_code}")
+            logger.debug("Non-200 health check")
+        else:
+            try:
+                languages = resp.json()
+                logger.debug("Available languages: %r", [lang['code'] for lang in languages])
+                
+                # Check if target language is supported (only if we have one configured)
+                if config.get("target_language"):
+                    available_codes = [lang['code'] for lang in languages]
+                    if config["target_language"] not in available_codes:
+                        warnings.append(f"Target language '{config['target_language']}' not found in available languages")
+                
+                # Test a simple translation
+                test_url = f"{config['host']}/translate"
+                target_lang = config.get("target_language", "es")  # fallback to Spanish for testing
+                test_data = {
+                    "q": "Hello",
+                    "source": "en",
+                    "target": target_lang,
+                    "format": "text"
+                }
+                
+                test_resp = requests.post(test_url, json=test_data, headers=headers, timeout=10)
+                if test_resp.status_code != 200:
+                    warnings.append(f"Translation test failed with status {test_resp.status_code}")
+                else:
+                    logger.debug("Translation test successful")
+                    
+            except Exception as e:
+                warnings.append(f"Error parsing LibreTranslate response: {str(e)[:100]}")
+                logger.debug("Exception parsing response: %s", e)
+
+    except requests.exceptions.Timeout:
+        issues.append(f"Timeout connecting to LibreTranslate at {config['host']} (>10s)")
+        logger.debug("Requests Timeout connecting to %s", config['host'])
+    except requests.exceptions.ConnectionError:
+        issues.append(f"Cannot connect to LibreTranslate at {config['host']} - is LibreTranslate running?")
+        logger.debug("ConnectionError connecting to %s", config['host'])
+    except Exception as e:
+        issues.append(f"Error checking LibreTranslate connectivity: {str(e)[:100]}")
+        logger.debug("Unexpected exception during LibreTranslate connectivity: %s", e)
+
+    # Derive overall status
+    status = "error" if issues else "warning" if warnings else "healthy"
+    logger.debug("Final status: %s; issues: %s; warnings: %s", status, issues, warnings)
+
+    return {"issues": issues, "warnings": warnings, "status": status}
+
 def get_arabic_correction_status_with_validation():
     """Get Arabic correction status with detailed validation."""
     validation_result = validate_arabic_correction_environment()
@@ -547,6 +662,27 @@ def get_detailed_arabic_correction_info():
     
     return info_html
 
+
+def get_translation_status_with_validation():
+    """Get Translation status with detailed validation."""
+    validation_result = validate_translation_environment()
+    config = get_translation_config()
+    
+    if validation_result["status"] == "disabled":
+        return "<small style='color: gray;'>⚪ Translation: Disabled in configuration</small>"
+    
+    elif validation_result["status"] == "error":
+        error_details = "; ".join(validation_result["issues"][:2])  # Show first 2 issues
+        return f"<small style='color: red;'>✗ Translation: {error_details}</small>"
+    
+    elif validation_result["status"] == "warning":
+        warning_details = "; ".join(validation_result["warnings"][:1])  # Show first warning
+        return f"<small style='color: orange;'>⚠ Translation: {warning_details}</small>"
+    
+    else:
+        target_lang = config.get("target_language", "unknown")
+        return f"<small style='color: green;'>✓ Translation: Ready (→ {target_lang})</small>"
+
 def get_detailed_ai_vision_info():
     """Get detailed AI Vision information for the UI."""
     validation_result = validate_ai_vision_environment()
@@ -583,6 +719,46 @@ def get_detailed_ai_vision_info():
     </div>
     """
 
+    return info_html
+
+def get_detailed_translation_info():
+    """Get detailed Translation information for the UI."""
+    validation_result = validate_translation_environment()
+    config = get_translation_config()
+    
+    info_html = f"""
+    <div style='font-size: 12px; margin-top: 10px;'>
+    <strong>Translation Service Status:</strong><br>
+    <strong>Host:</strong> {config['host']}<br>
+    <strong>Target Language:</strong> {config.get('target_language', 'Not configured')}<br>
+    <strong>API Key:</strong> {'Set' if config.get('api_key') else 'Not set'}<br>
+    <strong>Enabled:</strong> {config['enabled']}<br>
+    """
+    
+    if validation_result["issues"]:
+        info_html += "<br><strong style='color: red;'>Issues:</strong><br>"
+        for issue in validation_result["issues"]:
+            info_html += f"• {issue}<br>"
+    
+    if validation_result["warnings"]:
+        info_html += "<br><strong style='color: orange;'>Warnings:</strong><br>"
+        for warning in validation_result["warnings"]:
+            info_html += f"• {warning}<br>"
+    
+    if validation_result["status"] == "healthy":
+        info_html += "<br><strong style='color: green;'>✓ All checks passed</strong><br>"
+    
+    # Add configuration help
+    info_html += """
+    <br><strong>Configuration:</strong><br>
+    Set these environment variables:<br>
+    • <code>DOCLING_TRANSLATION_ENABLED=true</code><br>
+    • <code>DOCLING_TRANSLATION_LIBRETRANSLATE_HOST=http://localhost:5000</code><br>
+    • <code>DOCLING_TRANSLATION_TARGET_LANGUAGE=en</code><br>
+    • <code>DOCLING_TRANSLATION_API_KEY=your_key_here</code> (optional)<br>
+    </div>
+    """
+    
     return info_html
 
 def test_arabic_correction_connection():
@@ -622,6 +798,51 @@ def test_ai_vision_connection():
 
     except Exception as e:
         return f"❌ Error testing AI Vision: {str(e)}"
+
+
+
+
+def test_translation_connection():
+    """Test Translation connection and return user-friendly message."""
+    try:
+        validation_result = validate_translation_environment()
+        
+        if validation_result["status"] == "healthy":
+            return "✅ Translation service is working properly!"
+        elif validation_result["status"] == "disabled":
+            return "ℹ️ Translation is disabled in configuration"
+        elif validation_result["status"] == "warning":
+            warnings = "; ".join(validation_result["warnings"])
+            return f"⚠️ Translation has warnings: {warnings}"
+        else:
+            issues = "; ".join(validation_result["issues"])
+            return f"❌ Translation has issues: {issues}"
+            
+    except Exception as e:
+        return f"❌ Error testing Translation: {str(e)}"
+
+def log_translation_startup_status():
+    """Log Translation status on startup for debugging."""
+    try:
+        validation_result = validate_translation_environment()
+        config = get_translation_config()
+        
+        logger.info(f"Translation Service - Enabled: {config['enabled']}")
+        logger.info(f"Translation Service - Host: {config['host']}")
+        logger.info(f"Translation Service - Target Language: {config['target_language']}")
+        logger.info(f"Translation Service - Status: {validation_result['status']}")
+        
+        if validation_result['issues']:
+            for issue in validation_result['issues']:
+                logger.warning(f"Translation Service Issue: {issue}")
+                
+        if validation_result['warnings']:
+            for warning in validation_result['warnings']:
+                logger.info(f"Translation Service Warning: {warning}")
+                
+    except Exception as e:
+        logger.error(f"Error checking Translation status on startup: {e}")
+
 
 def get_ocrmypdf_status_with_validation():
     """Get OCRMyPDF status with validation."""
@@ -949,7 +1170,9 @@ def process_url(
     enable_ai_vision=False,
     ai_vision_preserve_formatting=True,
     ai_vision_include_page_breaks=True,
-    enable_bidi_processing=False
+    enable_bidi_processing=False,
+    enable_translation=False,
+
 ):
     
     # Check if Arabic correction is globally enabled via config
@@ -959,6 +1182,10 @@ def process_url(
     # Check if AI Vision is globally enabled via config
     ai_vision_config = get_ai_vision_config()
     final_ai_vision = enable_ai_vision and ai_vision_config["enabled"]
+
+    # Check if Translation is globally enabled via config
+    translation_config = get_translation_config()
+    final_translation = enable_translation and translation_config["enabled"]
 
     parameters = {
         "http_sources": [{"url": source} for source in input_sources.split(",")],
@@ -986,6 +1213,8 @@ def process_url(
             "ai_vision_preserve_formatting": ai_vision_preserve_formatting,
             "ai_vision_include_page_breaks": ai_vision_include_page_breaks,
             "enable_bidi_processing": enable_bidi_processing,
+            "enable_translation": final_translation,
+
         },
     }
     if (
@@ -1047,6 +1276,8 @@ def process_file(
     ai_vision_preserve_formatting=True,
     ai_vision_include_page_breaks=True,
     enable_bidi_processing=False,
+    enable_translation=False,
+
 ):
     if not files or len(files) == 0:
         logger.error("No files provided.")
@@ -1066,6 +1297,10 @@ def process_file(
     # Check if AI Vision is globally enabled via config
     ai_vision_config = get_ai_vision_config()
     final_ai_vision = enable_ai_vision and ai_vision_config["enabled"]
+
+     # Check if Translation is globally enabled via config
+    translation_config = get_translation_config()
+    final_translation = enable_translation and translation_config["enabled"]
 
     parameters = {
         "file_sources": files_data,
@@ -1093,6 +1328,7 @@ def process_file(
             "ai_vision_preserve_formatting": ai_vision_preserve_formatting,
             "ai_vision_include_page_breaks": ai_vision_include_page_breaks,
             "enable_bidi_processing": enable_bidi_processing,
+            "enable_translation": final_translation,
         },
     }
 
@@ -1213,6 +1449,7 @@ log_arabic_correction_startup_status()
 
 log_ai_vision_startup_status()
 
+log_translation_startup_status()
 
 ############
 # UI Setup #
@@ -1533,6 +1770,41 @@ with gr.Blocks(
                         info="Add page break markers between pages"
                     )
 
+        # Translation section
+        with gr.Row():
+            with gr.Column():
+                enable_translation = gr.Checkbox(
+                    label="Enable Translation",
+                    value=False,
+                    info="Automatically translate extracted text to target language"
+                )
+            with gr.Column():
+                # Dynamic status with validation
+                translation_status = gr.HTML(
+                    value=get_translation_status_with_validation(),
+                    visible=True
+                )
+
+        # Detailed Translation configuration and validation info
+        with gr.Accordion("Translation Configuration & Status", open=False):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    translation_detailed_info = gr.HTML(
+                        value=get_detailed_translation_info(),
+                        visible=True
+                    )
+                with gr.Column(scale=1):
+                    test_translation_btn = gr.Button(
+                        "Test Connection",
+                        variant="secondary",
+                        scale=1
+                    )
+                    test_translation_result = gr.Textbox(
+                        label="Test Result",
+                        interactive=False,
+                        visible=False
+                    )
+
     # Task id output
     with gr.Row(visible=False) as task_id_output:
         task_id_rendered = gr.Textbox(label="Task id", interactive=False)
@@ -1623,6 +1895,17 @@ with gr.Blocks(
         outputs=[test_ai_vision_result]
     )
 
+    # Translation test button
+    test_translation_btn.click(
+        fn=test_translation_connection,
+        inputs=[],
+        outputs=[test_translation_result]
+    ).then(
+        fn=lambda x: gr.Textbox(visible=True),
+        inputs=[test_translation_result],
+        outputs=[test_translation_result]
+    )
+
     # URL processing
     url_process_btn.click(
         set_options_visibility, inputs=[false_bool], outputs=[options]
@@ -1673,6 +1956,7 @@ with gr.Blocks(
             ai_vision_preserve_formatting,
             ai_vision_include_page_breaks,
             enable_bidi_processing,
+            enable_translation,
         ],
         outputs=[
             task_id_rendered,
@@ -1768,6 +2052,7 @@ with gr.Blocks(
             ai_vision_preserve_formatting,
             ai_vision_include_page_breaks,
             enable_bidi_processing,
+            enable_translation,
         ],
         outputs=[
             task_id_rendered,

@@ -58,6 +58,7 @@ dependencies = [
     "hf-transfer",
 
     "scalar-fastapi>=1.0.3",
+    "libretranslatepy",
 ]
 
 [project.optional-dependencies]

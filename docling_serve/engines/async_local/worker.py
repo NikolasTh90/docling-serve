@@ -260,6 +260,26 @@ class AsyncLocalWorker:
                             _log.error(f"BiDi processing failed for task {task_id}: {e}", exc_info=True)
                             # Continue without BiDi processing rather than failing the entire task
 
+                    try:
+                        from docling_serve.settings import translation_settings
+                        from docling_serve.translation.service import TranslationService
+                        
+                        if translation_settings and translation_settings.enabled:
+                            translation_service = TranslationService(translation_settings)
+                            
+                            # Get OCR languages from task options
+                            ocr_languages = getattr(task.options, 'ocr_lang', None)
+                            
+                            _log.info(f"Applying translation processing with OCR languages: {ocr_languages}")
+                            response = translation_service.process_conversion_result(response, ocr_languages)
+                            _log.info(f"Translation processing completed for task {task_id}")
+                            
+                    except ImportError as e:
+                        _log.warning(f"Translation service not available: {e}")
+                    except Exception as e:
+                        _log.error(f"Translation processing failed for task {task_id}: {e}", exc_info=True)
+                        # Continue without translation rather than failing the entire task
+
                     if work_dir.exists():
                         task.scratch_dir = work_dir
                         if not isinstance(response, FileResponse):

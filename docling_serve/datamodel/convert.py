@@ -469,6 +469,20 @@ class ConvertDocumentsOptions(BaseModel):
         ),
     ] = False
 
+
+    enable_translation: Annotated[
+        bool,
+        Field(
+            description=(
+                "If enabled, automatically translate the document content to all specified "
+                "OCR languages using LibreTranslate API. Translations are appended to the "
+                "markdown output. Requires ocr_lang to be specified and translation service "
+                "to be configured. Boolean. Optional, defaults to false."
+            ),
+            examples=[False],
+        ),
+    ] = False
+
     @model_validator(mode="after")
     def picture_description_exclusivity(self) -> Self:
         # Validate picture description options
