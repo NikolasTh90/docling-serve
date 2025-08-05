@@ -153,11 +153,11 @@ env:
   # Translation Settings
   translation:
     enabled: false
-    libretranslateHost: "https://libretranslate.com"
+    libretranslateHost: "http://docling-serve-translation.docling-serve.svc.cluster.local:5000"
     apiKey: ""  # Optional - leave empty if not needed
     timeout: 60
     minConfidence: 0.9
-    maxTextLength: 2147483647  # sys.maxsize equivalent
+    maxTextLength: "1000000"  # sys.maxsize equivalent
 
   # Uvicorn Settings
   uvicorn:

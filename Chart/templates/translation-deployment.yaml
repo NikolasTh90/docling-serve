@@ -69,26 +69,11 @@ spec:
               containerPort: 5000
               protocol: TCP
           env:
-            {{- if .Values.translation.env.apiKeys }}
-            - name: LT_API_KEYS
-              value: {{ .Values.translation.env.apiKeys | quote }}
-            {{- end }}
-            {{- if .Values.translation.env.requireApiKeyOrigin }}
-            - name: LT_REQUIRE_API_KEY_ORIGIN
-              value: {{ .Values.translation.env.requireApiKeyOrigin | quote }}
-            {{- end }}
-            {{- if .Values.translation.env.loadOnly }}
             - name: LT_LOAD_ONLY
-              value: {{ .Values.translation.env.loadOnly | quote }}
-            {{- end }}
-            {{- if .Values.translation.env.threads }}
-            - name: LT_THREADS
-              value: {{ .Values.translation.env.threads | quote }}
-            {{- end }}
-            {{- if .Values.translation.env.updateModels }}
-            - name: LT_UPDATE_MODELS
-              value: {{ .Values.translation.env.updateModels | quote }}
-            {{- end }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "docling-serve.fullname" . }}-translation-config
+                  key: LT_LOAD_ONLY
             {{- if .Values.proxy.enabled }}
             - name: HTTP_PROXY
               value: {{ .Values.proxy.httpProxy | quote }}
@@ -97,33 +82,40 @@ spec:
             - name: NO_PROXY
               value: {{ .Values.proxy.noProxy | quote }}
             {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "docling-serve.fullname" . }}-translation-config
           livenessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            initialDelaySeconds: 300
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 3
+            initialDelaySeconds: 300
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
           resources:
-            {{- if .Values.translation.resources.requests }}
+            {{- if or .Values.translation.resources.requests .Values.translation.gpu.enabled }}
             requests:
+              {{- if .Values.translation.resources.requests }}
               {{- toYaml .Values.translation.resources.requests | nindent 14 }}
+              {{- end }}
               {{- if .Values.translation.gpu.enabled }}
               nvidia.com/gpu: {{ .Values.translation.gpu.count }}
           {{- end }}
             {{- end }}
-            {{- if .Values.translation.resources.limits }}
+            {{- if or .Values.translation.resources.limits .Values.translation.gpu.enabled }}
             limits:
+              {{- if .Values.translation.resources.limits }}
               {{- toYaml .Values.translation.resources.limits | nindent 14 }}
+              {{- end }}
               {{- if .Values.translation.gpu.enabled }}
               nvidia.com/gpu: {{ .Values.translation.gpu.count }}
               {{- end }}

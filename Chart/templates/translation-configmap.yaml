@@ -1,0 +1,12 @@
+{{- if .Values.translation.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-translation-config
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+    app.kubernetes.io/component: translation
+data:
+  LT_LOAD_ONLY: "en,el,ar"
+{{- end }}
