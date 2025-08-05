@@ -150,6 +150,15 @@ env:
     progressBarFriendly: true
     manageRootLogger: false
 
+  # Translation Settings
+  translation:
+    enabled: false
+    libretranslateHost: "https://libretranslate.com"
+    apiKey: ""  # Optional - leave empty if not needed
+    timeout: 60
+    minConfidence: 0.9
+    maxTextLength: 2147483647  # sys.maxsize equivalent
+
   # Uvicorn Settings
   uvicorn:
     reload: false
@@ -174,3 +183,71 @@ serviceAccount:
 
 # Namespace configuration
 namespaceOverride: ""
+
+# Translation Service Configuration
+translation:
+  enabled: false
+  replicaCount: 1
+  
+  image:
+    repository: libretranslate/libretranslate
+    tag: latest-cuda
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 5000
+  
+  # GPU configuration for translation service
+  gpu:
+    enabled: true
+    count: 1
+  
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 4Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  
+  # Node affinity configuration
+  nodeAffinity:
+    enabled: true
+    preferredNode: office-worker-8
+    required: false
+  
+  # Storage configuration for models
+  persistence:
+    enabled: true
+    storageClass: longhorn
+    accessMode: ReadWriteMany
+    size: 20Gi  # Models can be large
+    annotations: {}
+  
+  # Pod configuration
+  podAnnotations:
+    sidecar.istio.io/proxyCPU: "100m"
+    sidecar.istio.io/proxyMemory: "128Mi"
+  
+  podSecurityContext: {}
+  securityContext: {}
+  
+  # Environment variables for LibreTranslate
+  env:
+    apiKeys: ""  # Optional: comma-separated API keys
+    requireApiKeyOrigin: ""  # Optional: require API key for specific origins
+    loadOnly: ""  # Optional: comma-separated language codes to load only specific models
+    threads: "4"  # Number of threads to use
+    updateModels: "true"  # Whether to update models on startup
+  
+  # Autoscaling
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []

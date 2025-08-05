@@ -1,3 +1,5 @@
+import asyncio
+import concurrent.futures
 import logging
 import time
 from typing import Dict, Optional, Tuple, Any, List
@@ -81,8 +83,60 @@ class TranslationService:
         
         return text
     
-    def translate_markdown(self, md_content: str, source_lang: str, target_lang: str) -> Optional[str]:
-        """Translate markdown content while preserving format."""
+    def _split_text_into_chunks(self, text: str, max_words: int = 500) -> List[str]:
+        """Split text into chunks of approximately max_words, preserving sentence boundaries."""
+        words = text.split()
+        if len(words) <= max_words:
+            return [text]
+            
+        chunks = []
+        current_chunk = []
+        word_count = 0
+
+        for word in words:
+            current_chunk.append(word)
+            word_count += 1
+
+            # Check if we should end this chunk
+            if word_count >= max_words:
+                # Try to find a sentence boundary
+                chunk_text = ' '.join(current_chunk)
+
+                # Look for sentence endings in the last part of the chunk
+                last_sentences = chunk_text.split('. ')
+                if len(last_sentences) > 1:
+                    # Keep all but the last incomplete sentence
+                    complete_chunk = '. '.join(last_sentences[:-1]) + '.'
+                    chunks.append(complete_chunk)
+
+                    # Start next chunk with the incomplete sentence
+                    remaining_words = last_sentences[-1].split()
+                    current_chunk = remaining_words
+                    word_count = len(remaining_words)
+                else:
+                    # No sentence boundary found, split at word boundary
+                    chunks.append(chunk_text)
+                    current_chunk = []
+                    word_count = 0
+
+        # Add remaining words as final chunk
+        if current_chunk:
+            chunks.append(' '.join(current_chunk))
+
+        return chunks
+
+    def _translate_chunk(self, chunk: str, source_lang: str, target_lang: str, chunk_index: int) -> Tuple[int, Optional[str]]:
+        """Translate a single chunk and return with its index."""
+        try:
+            translated = self.api.translate(chunk, source_lang, target_lang)
+            logger.debug(f"Translated chunk {chunk_index}: {len(chunk)} chars -> {len(translated) if translated else 0} chars")
+            return chunk_index, translated
+        except Exception as e:
+            logger.error(f"Failed to translate chunk {chunk_index}: {e}")
+            return chunk_index, None
+                
+    def translate_markdown_parallel(self, md_content: str, source_lang: str, target_lang: str) -> Optional[str]:
+        """Translate markdown content in parallel chunks."""
         if not self.settings.enabled or source_lang == target_lang:
             return None
             
@@ -92,7 +146,68 @@ class TranslationService:
             md_content = md_content[:self.settings.max_text_length]
             
         start_time = time.time()
-        
+        try:
+            # Split text into chunks
+            chunks = self._split_text_into_chunks(md_content, max_words=500)
+            logger.info(f"Split text into {len(chunks)} chunks for parallel translation")
+
+            if len(chunks) == 1:
+                # Single chunk, use regular translation
+                return self.translate_markdown(md_content, source_lang, target_lang)
+
+            # Translate chunks in parallel using ThreadPoolExecutor
+            translated_chunks = [None] * len(chunks)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(chunks))) as executor:
+                # Submit all translation tasks
+                future_to_index = {
+                    executor.submit(self._translate_chunk, chunk, source_lang, target_lang, i): i
+                    for i, chunk in enumerate(chunks)
+                }
+
+                # Collect results as they complete
+                for future in concurrent.futures.as_completed(future_to_index):
+                    chunk_index, translated_text = future.result()
+                    if translated_text:
+                        translated_chunks[chunk_index] = translated_text
+                    else:
+                        logger.error(f"Translation failed for chunk {chunk_index}")
+                        # Use original chunk as fallback
+                        translated_chunks[chunk_index] = chunks[chunk_index]
+
+            # Recombine translated chunks
+            final_translation = ' '.join(chunk for chunk in translated_chunks if chunk)
+
+            # Log translation performance
+            end_time = time.time()
+            translation_time = end_time - start_time
+            words = len(md_content.split())
+            wps = words / translation_time if translation_time > 0 else 0
+
+            logger.info(f"Parallel translation {source_lang}→{target_lang}: {translation_time:.2f}s, {words} words, {wps:.1f} words/sec, {len(chunks)} chunks")
+
+            return final_translation if final_translation.strip() else None
+        except Exception as e:
+            end_time = time.time()
+            translation_time = end_time - start_time
+            logger.error(f"Parallel translation failed from {source_lang} to {target_lang} after {translation_time:.2f}s: {e}")
+            return None
+
+    def translate_markdown(self, md_content: str, source_lang: str, target_lang: str) -> Optional[str]:
+        """Translate markdown content. Uses parallel chunking for large texts."""
+        if not self.settings.enabled or source_lang == target_lang:
+            return None
+
+        # Single chunk translation for smaller texts
+        if len(md_content) > self.settings.max_text_length:
+            logger.warning(f"Text length {len(md_content)} exceeds limit {self.settings.max_text_length}, truncating")
+            md_content = md_content[:self.settings.max_text_length]
+        # Use parallel translation for texts with more than 500 words
+        word_count = len(md_content.split())
+        if word_count > 500:
+            return self.translate_markdown_parallel(md_content, source_lang, target_lang)
+
+        start_time = time.time()
         try:
             translated_text = self.api.translate(md_content, source_lang, target_lang)
             
@@ -108,7 +223,6 @@ class TranslationService:
                 logger.warning(f"Translation {source_lang}→{target_lang} returned empty result after {translation_time:.2f}s")
                 
             return translated_text
-            
         except Exception as e:
             end_time = time.time()
             translation_time = end_time - start_time
@@ -122,45 +236,14 @@ class TranslationService:
             return [lang["code"] for lang in languages]
         except Exception as e:
             logger.error(f"Failed to get supported languages: {e}")
-            # Fallback to hardcoded list
-            return [
-                "en", "ar", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko",
-                "nl", "pl", "tr", "vi", "hi", "sv", "da", "no", "fi", "cs", "hu",
-                "ro", "bg", "hr", "sk", "sl", "et", "lv", "lt", "uk", "el", "he",
-                "fa", "ur", "bn", "ta", "te", "ml", "kn", "gu", "pa", "or", "as",
-                "ne", "si", "my", "km", "lo", "ka", "am", "is", "mt", "cy", "ga",
-                "gd", "br", "co", "eu", "ca", "gl", "oc", "la", "eo"
-            ]
-    
-    def get_translation_target_languages(self, ocr_languages: Optional[List[str]] = None) -> List[str]:
-        """
-        Convert OCR language codes to LibreTranslate target languages.
-        
-        Args:
-            ocr_languages: List of OCR language codes (2-letter for EasyOCR)
-            
-        Returns:
-            List of LibreTranslate-compatible language codes
-        """
-        if not ocr_languages:
-            logger.info("No OCR languages provided - no translations will be performed")
             return []
-        
-        # Get supported languages from API
-        supported_libretranslate_codes = set(self.get_supported_languages())
-        
-        valid_languages = []
-        for lang in ocr_languages:
-            lang = lang.lower().strip()
-            if lang in supported_libretranslate_codes:
-                valid_languages.append(lang)
-                logger.debug(f"OCR language '{lang}' is supported for translation")
-            else:
-                logger.warning(f"OCR language '{lang}' not supported by LibreTranslate - skipping")
-        
-        logger.info(f"Translation target languages from OCR: {valid_languages}")
-        return valid_languages
-    
+
+    def get_translation_target_languages(self, ocr_languages: Optional[List[str]] = None) -> List[str]:
+        """Get target languages for translation based on OCR languages or settings."""
+        if ocr_languages:
+            return ocr_languages
+        return self.settings.target_languages
+
     def translate_to_all_languages(self, md_content: str, ocr_languages: Optional[List[str]] = None) -> Dict[str, str]:
         """Detect language and translate to OCR target languages."""
         translations = {}
@@ -231,10 +314,8 @@ class TranslationService:
                     
             else:
                 logger.warning(f"Unknown response format for translation: {type(response)}")
-                
         except Exception as e:
             logger.error(f"Error processing conversion result for translation: {e}")
-            
         return response
     
     def _append_translations(self, original_md: str, ocr_languages: Optional[List[str]] = None) -> str:

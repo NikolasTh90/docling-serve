@@ -1,0 +1,20 @@
+{{- if .Values.translation.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-translation
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+    app.kubernetes.io/component: translation
+spec:
+  type: {{ .Values.translation.service.type }}
+  ports:
+    - port: {{ .Values.translation.service.port }}
+      targetPort: 5000
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "docling-serve.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: translation
+{{- end }}

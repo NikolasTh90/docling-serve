@@ -37,6 +37,20 @@ data:
   
   # OCRMyPDF Logging Settings
   DOCLING_OCRMYPDF_VERBOSITY: {{ .Values.env.ocrmypdf.verbosity | quote }}
+
+  # Translation Settings
+  DOCLING_TRANSLATE_ENABLED: {{ .Values.env.translation.enabled | quote }}
+  {{- if .Values.translation.enabled }}
+  DOCLING_TRANSLATE_LIBRETRANSLATE_HOST: "http://{{ include "docling-serve.fullname" . }}-translation.{{ include "docling-serve.namespace" . }}.svc.cluster.local:{{ .Values.translation.service.port }}"
+  {{- else }}
+  DOCLING_TRANSLATE_LIBRETRANSLATE_HOST: {{ .Values.env.translation.libretranslateHost | quote }}
+  {{- end }}
+  {{- if .Values.env.translation.apiKey }}
+  DOCLING_TRANSLATE_API_KEY: {{ .Values.env.translation.apiKey | quote }}
+  {{- end }}
+  DOCLING_TRANSLATE_TIMEOUT: {{ .Values.env.translation.timeout | quote }}
+  DOCLING_TRANSLATE_MIN_CONFIDENCE: {{ .Values.env.translation.minConfidence | quote }}
+  DOCLING_TRANSLATE_MAX_TEXT_LENGTH: {{ .Values.env.translation.maxTextLength | quote }}
   DOCLING_OCRMYPDF_PROGRESS_BAR_FRIENDLY: {{ .Values.env.ocrmypdf.progressBarFriendly | quote }}
   DOCLING_OCRMYPDF_MANAGE_ROOT_LOGGER: {{ .Values.env.ocrmypdf.manageRootLogger | quote }}
   

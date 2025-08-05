@@ -30,6 +30,8 @@ env:
   uvicorn:
     logLevel: "debug"  # Less verbose logging
     workers: 1  # More workers for production
+  translation:
+    enabled: true
 
 # Skip namespace creation since we created it manually
 namespaceOverride: docling-serve
@@ -60,3 +62,30 @@ pullSecret:
 command:
   enabled: false
   value: ["uv", "run", "--extra", "ui", "docling-serve", "run", "--host", "0.0.0.0", "--port", "5001", "--enable-ui"]
+
+# Enable translation service in production
+translation:
+  enabled: true
+  replicaCount: 1
+  
+  # Use GPU-enabled translation service
+  gpu:
+    enabled: true
+    count: 1
+  
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  
+  # Use same node as main service
+  nodeAffinity:
+    enabled: true
+    preferredNode: office-worker-8
+    required: true
+  
+  persistence:
+    size: 30Gi  # Larger storage for translation models

@@ -1,0 +1,24 @@
+{{- if and .Values.translation.enabled .Values.translation.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-translation-pvc
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+    app.kubernetes.io/component: translation
+  {{- with .Values.translation.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.translation.persistence.storageClass }}
+  storageClassName: {{ .Values.translation.persistence.storageClass }}
+  {{- end }}
+  accessModes:
+    - {{ .Values.translation.persistence.accessMode }}
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: {{ .Values.translation.persistence.size }}
+{{- end }}

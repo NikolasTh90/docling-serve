@@ -18,4 +18,4 @@ class TranslationSettings(BaseSettings):
     api_key: Optional[str] = None
     timeout: int = 60
     min_confidence: float = 0.9
-    max_text_length: int = 30000  # Prevent API timeouts and excessive costs
+    max_text_length: int = sys.maxsize  # Prevent API timeouts and excessive costs

@@ -75,13 +75,20 @@ spec:
                 name: {{ include "docling-serve.fullname" . }}-proxy
           {{- end }}
           resources:
-            {{- if .Values.resources }}
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- end }}
-            {{- if .Values.gpu.enabled }}
-            limits:
+            {{- if .Values.resources.requests }}
+            requests:
+              {{- toYaml .Values.resources.requests | nindent 14 }}
+              {{- if .Values.gpu.enabled }}
               nvidia.com/gpu: {{ .Values.gpu.count }}
-      {{- end }}
+          {{- end }}
+            {{- end }}
+            {{- if .Values.resources.limits }}
+            limits:
+              {{- toYaml .Values.resources.limits | nindent 14 }}
+              {{- if .Values.gpu.enabled }}
+              nvidia.com/gpu: {{ .Values.gpu.count }}
+              {{- end }}
+            {{- end }}
           {{- if .Values.persistence.enabled }}
           volumeMounts:
             - name: data-volume
