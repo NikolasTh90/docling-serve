@@ -13,4 +13,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "docling-serve.selectorLabels" . | nindent 4 }}
+    app: {{ include "docling-serve.name" . }}
