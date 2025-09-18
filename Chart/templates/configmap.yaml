@@ -67,3 +67,14 @@ data:
   DOCLING_SERVE_API_HOST: {{ include "docling-serve.fullname" . }}.{{ include "docling-serve.namespace" . }}.svc.cluster.local
   DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT: {{ .Values.env.doclingServe.maxDocumentTimeout | quote }}
   DOCLING_SERVE_MAX_SYNC_WAIT: {{ .Values.env.doclingServe.maxSyncWait | quote }}
+  
+  # AI Vision Settings
+  {{- if .Values.ollama.enabled }}
+  DOCLING_AI_VISION_ENABLED: "true"
+  DOCLING_AI_VISION_OLLAMA_HOST: "http://{{ include "docling-serve.fullname" . }}-ollama.{{ include "docling-serve.namespace" . }}.svc.cluster.local:11434"
+  DOCLING_AI_VISION_MODEL_NAME: "qwen2.5-vl:7b"
+  DOCLING_AI_VISION_TIMEOUT: "300"
+  DOCLING_AI_VISION_MAX_RETRIES: "3"
+  {{- else }}
+  DOCLING_AI_VISION_ENABLED: "false"
+  {{- end }}

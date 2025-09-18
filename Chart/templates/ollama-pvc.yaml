@@ -1,0 +1,24 @@
+{{- if and .Values.ollama.enabled .Values.ollama.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-ollama-pvc
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+  {{- with .Values.ollama.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ollama.persistence.storageClass }}
+  storageClassName: {{ .Values.ollama.persistence.storageClass }}
+  {{- end }}
+  accessModes:
+    - {{ .Values.ollama.persistence.accessMode }}
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: {{ .Values.ollama.persistence.size }}
+{{- end }}

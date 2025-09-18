@@ -184,6 +184,75 @@ serviceAccount:
 # Namespace configuration
 namespaceOverride: ""
 
+# Ollama Service Configuration
+ollama:
+  enabled: false
+  replicaCount: 1
+  
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 11434
+  
+  # GPU configuration for ollama service
+  gpu:
+    enabled: true
+    count: 1
+  
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  
+  # Node affinity configuration
+  nodeAffinity:
+    enabled: true
+    preferredNode: office-worker-8
+    required: false
+  
+  # Storage configuration for models
+  persistence:
+    enabled: true
+    storageClass: longhorn
+    accessMode: ReadWriteMany
+    size: 50Gi  # Ollama models can be very large
+    annotations: {}
+  
+  # Pod configuration
+  podAnnotations:
+    sidecar.istio.io/proxyCPU: "100m"
+    sidecar.istio.io/proxyMemory: "128Mi"
+  
+  podSecurityContext: {}
+  securityContext: {}
+  
+  # Environment variables for Ollama
+  env:
+    ollamaHost: "0.0.0.0:11434"
+    ollamaModels: "/models"
+    ollamaKeepAlive: "5m"
+    ollamaDebug: "false"
+    ollamaMaxLoadedModels: "1"  # Limit concurrent models due to GPU sharing
+    ollamaNumParallel: "1"      # Limit parallel requests
+  
+  # Autoscaling
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+
 # Translation Service Configuration
 translation:
   enabled: false

@@ -1,0 +1,17 @@
+{{- if .Values.ollama.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docling-serve.fullname" . }}-ollama-config
+  namespace: {{ include "docling-serve.namespace" . }}
+  labels:
+    {{- include "docling-serve.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+data:
+  OLLAMA_HOST: {{ .Values.ollama.env.ollamaHost | quote }}
+  OLLAMA_MODELS: {{ .Values.ollama.env.ollamaModels | quote }}
+  OLLAMA_KEEP_ALIVE: {{ .Values.ollama.env.ollamaKeepAlive | quote }}
+  OLLAMA_DEBUG: {{ .Values.ollama.env.ollamaDebug | quote }}
+  OLLAMA_MAX_LOADED_MODELS: {{ .Values.ollama.env.ollamaMaxLoadedModels | quote }}
+  OLLAMA_NUM_PARALLEL: {{ .Values.ollama.env.ollamaNumParallel | quote }}
+{{- end }}

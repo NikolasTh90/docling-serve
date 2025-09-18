@@ -24,29 +24,38 @@ _log = logging.getLogger(__name__)
 def prepare_ai_vision_response(
     markdown_content: str,
     filename: str,
-    conversion_options
+    conversion_options,
+    processing_time: float = 0.0
 ) -> dict:
     """Prepare response for AI Vision processed content."""
+    import re
+    from pathlib import Path
+    from docling.datamodel.base_models import ConversionStatus
 
+    # Extract document name from filename (for the required 'name' field)
+    document_name = Path(filename).stem
+    
     # AI Vision always returns markdown, but we need to respect output format preferences
     response_data = {
         "document": {
             "filename": filename,
             "md_content": markdown_content,
-        }
+        },
+        "status": ConversionStatus.SUCCESS,  # Required field
+        "processing_time": processing_time,  # Required field
     }
 
     # Convert markdown to other requested formats if needed
     to_formats = conversion_options.to_formats
 
-    if "json" in to_formats:
-        # Create a simple JSON structure for AI Vision content
-        response_data["document"]["json_content"] = {
-            "type": "document",
-            "content": markdown_content,
-            "source": "ai_vision",
-            "filename": filename
-        }
+    # JSON format is required and must include 'name' field
+    response_data["document"]["json_content"] = {
+        "type": "document",
+        "name": document_name,  # Required field that was missing
+        "content": markdown_content,
+        "source": "ai_vision",
+        "filename": filename
+    }
 
     if "html" in to_formats:
         # Convert markdown to HTML
@@ -59,7 +68,6 @@ def prepare_ai_vision_response(
 
     if "text" in to_formats:
         # Strip markdown formatting for plain text
-        import re
         text_content = re.sub(r'[#*_`\[\]()]', '', markdown_content)
         text_content = re.sub(r'\n+', '\n', text_content)
         response_data["document"]["text_content"] = text_content.strip()

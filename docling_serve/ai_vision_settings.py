@@ -12,7 +12,7 @@ class AIVisionSettings(BaseSettings):
     
     enabled: bool = False
     ollama_host: str = "http://localhost:11434"
-    model_name: str = "qwen2.5-vl:32b"
+    model_name: str = "qwen2.5-vl:72b"
     timeout: int = 300  # 5 minutes default timeout
     max_retries: int = 3
     supported_extensions: List[str] = [".pdf"]
@@ -20,11 +20,11 @@ class AIVisionSettings(BaseSettings):
     # Image processing settings for vision model
     image_quality: int = 95
     max_image_size: int = 2048  # Max dimension in pixels
-    pages_per_batch: int = 5   # Process pages in batches
+    pages_per_batch: int = 2   # Process pages in batches
     
     # Vision model specific settings
     temperature: float = 0.1   # Low temperature for consistent OCR-like output
-    max_tokens: int = 100000    # Max tokens per response
+    max_tokens: int = 8192   # Max tokens per response
     
     # Output formatting
     preserve_formatting: bool = True

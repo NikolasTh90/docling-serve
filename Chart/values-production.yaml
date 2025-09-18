@@ -89,3 +89,31 @@ translation:
   
   persistence:
     size: 30Gi  # Larger storage for translation models
+
+
+# Enable Ollama service in production
+ollama:
+  enabled: true
+  replicaCount: 1
+  
+  # Use GPU-enabled Ollama
+  gpu:
+    enabled: true
+    count: 1
+  
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  
+  # Use same node as main service for GPU sharing
+  nodeAffinity:
+    enabled: true
+    preferredNode: office-worker-8
+    required: true
+  
+  persistence:
+    size: 50Gi  # Large storage for Ollama models
