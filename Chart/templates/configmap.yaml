@@ -67,6 +67,7 @@ data:
   DOCLING_SERVE_API_HOST: {{ include "docling-serve.fullname" . }}.{{ include "docling-serve.namespace" . }}.svc.cluster.local
   DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT: {{ .Values.env.doclingServe.maxDocumentTimeout | quote }}
   DOCLING_SERVE_MAX_SYNC_WAIT: {{ .Values.env.doclingServe.maxSyncWait | quote }}
+  DOCLING_SERVE_ENABLE_REMOTE_SERVICES: {{ .Values.env.doclingServe.enableRemoteServices | quote }}
   
   # AI Vision Settings
   {{- if .Values.ollama.enabled }}
